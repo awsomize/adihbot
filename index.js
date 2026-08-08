@@ -17,7 +17,7 @@ const TOKEN = process.env.TOKEN;
 const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || null;
 const PROTECTED_CHANNEL = 'aaaaaaaa';
 
-const NUKE_DURATION = 10 * 60 * 1000;
+const NUKE_DURATION = 5000;
 const TICK_INTERVAL = 7 * 1000;
 let nukeActive = false;
 let nukeTimeout = null;
