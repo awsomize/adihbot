@@ -19,7 +19,7 @@ const PROTECTED_CHANNEL = 'aaaaaaaa';
 
 // Nuke session settings
 const NUKE_DURATION = 10 * 60 * 1000; // 10 minutes
-const TICK_INTERVAL = 100;       // every 8 seconds during nuke
+const TICK_INTERVAL = 10*100;       // every 8 seconds during nuke
 let nukeActive = false;
 let nukeTimeout = null;
 
