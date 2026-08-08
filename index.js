@@ -21,11 +21,11 @@ const PROTECTED_CHANNEL = 'aaaaaaaa';
 
 // ================== GIF SLOTS (PUT YOUR LINKS HERE) ==================
 const GIF_TYPE_1 = [
-  https://klipy.com/gifs/orgasm-cumming-1
+  "https://klipy.com/gifs/orgasm-cumming-1"
 ];
 
 const GIF_TYPE_2 = [
- https://klipy.com/gifs/vegan-porn-carrot-porn
+"https://klipy.com/gifs/vegan-porn-carrot-porn"
 ];
 
 // ================== LISTS ==================
