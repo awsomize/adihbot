@@ -368,7 +368,11 @@ async function runNukeTick(guild) {
 }
 
 // ================== START / STOP ==================
-
+async function startNuke(guild, message) {
+  if (nukeActive) {
+    if (message) await message.reply('FUCK YEA IM STILL RUNNING');
+    
+  }
 
   nukeActive = true;
   if (message) await message.reply('💣 **AGGRESSIVE MULTI-TASK NUKE STARTED**\nBoss + Armies hitting in parallel.');
