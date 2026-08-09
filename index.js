@@ -17,7 +17,7 @@ const TOKEN = process.env.TOKEN;
 const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || null;
 const PROTECTED_CHANNEL = 'aaaaaaaa';
 
-const NUKE_DURATION = 5 * 60 * 1000;   // 5 minutes of chaos
+const NUKE_DURATION = 1*1000;   // 5 minutes of chaos
 const TICK_INTERVAL = 8 * 1000;        // every 5 seconds
 const FINAL_TIMEOUT = 28 * 24 * 60 * 60 * 1000; // ~28 days
 
