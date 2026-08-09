@@ -32,8 +32,7 @@ const GIF_TYPE_1 = [
 
 const GIF_TYPE_2 = [
   "https://klipy.com/gifs/vegan-porn-carrot-porn"
-   `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
-  `@everyone`,
+  
 ];
 
 // ================== LISTS ==================
