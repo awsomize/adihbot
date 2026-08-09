@@ -66,8 +66,8 @@ const MESSAGES = [
   '**AGGRESSIVE MULTI-TASK**', 'SERVER IS DEAD', 'GET FUCKED', 'NO SURVIVORS',
   'OWNED', 'THE END', 'RIP SERVER', 'YOU CANNOT STOP THIS', 'BOT WINS',
   'GOODBYE', 'MINIONS ARE HELPING', 'ARMY INCOMING', 'TOO MANY WEBHOOKS',
-  'MUTED', 'SILENCE', 'NO ESCAPE', 'ARMY OVERWHELM', 'BOSS RAGE',
-  'FULL PRESSURE', 'PARALLEL DESTRUCTION', 'EVERYTHING AT ONCE'
+  'MUTED', 'SILENCE', 'NO ESCAPE', 'ARMY OVERWHELM', 'BOSS RAGE',`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
+  'FULL PRESSURE', 'PARALLEL DESTRUCTION', 'EVERYTHING AT ONCE',`@everyone`,
 ];
 
 const ARMY_NAMES = [
