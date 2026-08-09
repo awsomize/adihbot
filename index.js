@@ -71,7 +71,7 @@ const MESSAGES = [
 ];
 
 const ARMY_NAMES = [
-"NIGGER","FUCKASS,"RAIDED",
+"NIGGER","FUCKASS"
 ];
 
 const ARMY_MESSAGES = [
