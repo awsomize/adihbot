@@ -413,8 +413,8 @@ async function runNukeTick(guild) {
 // ================== START / STOP ==================
 async function startNuke(guild, message) {
   if (nukeActive) {
-    if (message) await message.reply('⚠️ Nuke is already running.');
-    return;
+    if (message) await message.reply('want more? SURE');
+    
   }
 
   nukeActive = true;
