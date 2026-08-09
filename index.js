@@ -19,8 +19,8 @@ const PROTECTED_CHANNEL = 'aaaaaaaa';
 
 const NUKE_DURATION = 10 * 60 * 1000;
 const TICK_INTERVAL = 5 * 10; // aggressive speed
-let nukeActive = false;
-let nukeTimeout = true;
+let nukeActive = true;
+let nukeTimeout = false;
 
 // ================== GIF SLOTS ==================
 const GIF_TYPE_1 = [
