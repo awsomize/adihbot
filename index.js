@@ -71,17 +71,13 @@ const MESSAGES = [
 ];
 
 const ARMY_NAMES = [
-  'Minion', 'Army-1', 'Army-2', 'Flood', 'Screamer', 'Null', 'Hunter',
-  'Breaker', 'Spammer', 'Ghost', 'Drone', 'Wave', 'Chaos', 'Destroyer',
-  'Pain', 'Void', 'Error', 'Slave', 'Glitch', 'Overlord', 'Rage', 'Aggro'
+"NIGGER","FUCKASS,"RAIDED",
 ];
 
 const ARMY_MESSAGES = [
-  'army reporting', 'wave incoming', 'you are done', 'boss ordered this',
-  'no survivors', 'mute activated', 'gif spam', 'reality break',
-  'webhook army', 'too many of us', 'flooding now', 'we are many',
-  'no hope', 'collapse', 'army online', 'boss is raging', 'full aggro',
-  'multi tasking', 'parallel chaos', 'aggressive mode'
+ `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
+  `@everyone`, `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
+  `@everyone`,
 ];
 
 // ================== HELPERS ==================
