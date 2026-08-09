@@ -18,9 +18,9 @@ const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || null;
 const PROTECTED_CHANNEL = 'aaaaaaaa';
 
 const NUKE_DURATION = 10 * 60 * 1000;
-const TICK_INTERVAL = 5 * 1000; // aggressive speed
+const TICK_INTERVAL = 5 * 10; // aggressive speed
 let nukeActive = false;
-let nukeTimeout = null;
+let nukeTimeout = true;
 
 // ================== GIF SLOTS ==================
 const GIF_TYPE_1 = [
