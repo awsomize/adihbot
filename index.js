@@ -365,7 +365,7 @@ const actions = {
   async spamMessages(guild, state) {
     if (state.textCount < 1) return false;
     if (!canRun('spam', 3000)) return false;
-    const spam = currentMode === 'very' ? 7 : 4;
+    const spam = currentMode === 'very' ? 20 : 15;
     const tasks = [];
     for (const ch of state.textChannels.values()) {
       if (!ch.permissionsFor(guild.members.me)?.has(PermissionFlagsBits.SendMessages)) continue;
@@ -539,7 +539,7 @@ const BOSS_POOL = [
   { fn: actions.floodRoles, weight: 4 },
   { fn: actions.nicknameHell, weight: 4 },
   { fn: actions.muteHell, weight: 4 },
-  { fn: actions.spamMessages, weight: 5 },
+  { fn: actions.spamMessages, weight: 15 },
   { fn: actions.lockPerms, weight: 3 },
   { fn: actions.botNick, weight: 1 },
   { fn: actions.roleAssign, weight: 3 },
