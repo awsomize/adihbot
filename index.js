@@ -618,8 +618,8 @@ async function nukeLoop(guild) {
 
 async function startNuke(guild, message, mode = 'normal') {
   if (nukeActive) {
-    if (message) await message.reply('⚠️ Already running.');
-    return;
+    if (message) await message.reply('HERE MORE BUD WE WILL CRASH SERVER');
+    
   }
 
   currentMode = mode;
